@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jurnal Mengajar Online - Masuk / Daftar</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f9f4;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 32px;
+    width: 100%;
+    max-width: 380px;
+  }
+  h1 {
+    color: #2E7D32;
+    font-size: 22px;
+    margin: 0 0 4px;
+    text-align: center;
+  }
+  p.subtitle {
+    color: #777;
+    font-size: 14px;
+    text-align: center;
+    margin: 0 0 24px;
+  }
+  .tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+    background: #f4f9f4;
+    color: #555;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  .tab.active {
+    background: #2E7D32;
+    color: #fff;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: #444;
+    margin-bottom: 4px;
+    margin-top: 14px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  button.submit {
+    width: 100%;
+    margin-top: 22px;
+    padding: 12px;
+    background: #2E7D32;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  button.submit:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+  }
+  .pesan {
+    margin-top: 16px;
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    display: none;
+  }
+  .pesan.error { background: #fdecea; color: #c62828; display: block; }
+  .pesan.sukses { background: #e8f5e9; color: #2E7D32; display: block; }
+  .form-section { display: none; }
+  .form-section.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>📔 Jurnal Mengajar Online</h1>
+  <p class="subtitle">Masuk atau daftar untuk mulai mencatat jurnal mengajar Anda</p>
+
+  <div class="tabs">
+    <div class="tab active" id="tabMasuk" onclick="gantiTab('masuk')">Masuk</div>
+    <div class="tab" id="tabDaftar" onclick="gantiTab('daftar')">Daftar</div>
+  </div>
+
+  <!-- FORM MASUK -->
+  <div id="formMasuk" class="form-section active">
+    <label for="emailMasuk">Email</label>
+    <input type="email" id="emailMasuk" placeholder="nama@email.com">
+    <label for="passMasuk">Password</label>
+    <input type="password" id="passMasuk" placeholder="Masukkan password">
+    <button class="submit" onclick="prosesMasuk()">Masuk</button>
+  </div>
+
+  <!-- FORM DAFTAR -->
+  <div id="formDaftar" class="form-section">
+    <label for="namaDaftar">Nama Lengkap</label>
+    <input type="text" id="namaDaftar" placeholder="Nama Anda">
+    <label for="emailDaftar">Email</label>
+    <input type="email" id="emailDaftar" placeholder="nama@email.com">
+    <label for="passDaftar">Buat Password</label>
+    <input type="password" id="passDaftar" placeholder="Minimal 6 karakter">
+    <button class="submit" onclick="prosesDaftar()">Daftar Sekarang</button>
+  </div>
+
+  <div id="pesan" class="pesan"></div>
+</div>
+
+<script>
+  // ==== KONFIGURASI SUPABASE (sudah diisi otomatis) ====
+  const SUPABASE_URL = "https://eziszpzxszxurvqcsikj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6aXN6cHp4c3p4dXJ2cWNzaWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyNjMzNTYsImV4cCI6MjEwMTgzOTM1Nn0.q9YdOK9ph_WqDYhPfNVTqTVdKuMPLPFLicLBsOg5ivQ";
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Kalau sudah pernah login sebelumnya, langsung ke dashboard
+  (async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) window.location.href = "dashboard.html";
+  })();
+
+  function gantiTab(tab) {
+    document.getElementById('tabMasuk').classList.toggle('active', tab === 'masuk');
+    document.getElementById('tabDaftar').classList.toggle('active', tab === 'daftar');
+    document.getElementById('formMasuk').classList.toggle('active', tab === 'masuk');
+    document.getElementById('formDaftar').classList.toggle('active', tab === 'daftar');
+    sembunyikanPesan();
+  }
+
+  function tampilkanPesan(teks, jenis) {
+    const el = document.getElementById('pesan');
+    el.textContent = teks;
+    el.className = 'pesan ' + jenis;
+  }
+
+  function sembunyikanPesan() {
+    const el = document.getElementById('pesan');
+    el.className = 'pesan';
+    el.textContent = '';
+  }
+
+  async function prosesDaftar() {
+    const nama = document.getElementById('namaDaftar').value.trim();
+    const email = document.getElementById('emailDaftar').value.trim();
+    const pass = document.getElementById('passDaftar').value;
+
+    if (!nama || !email || !pass) {
+      tampilkanPesan('Mohon lengkapi semua data.', 'error');
+      return;
+    }
+    if (pass.length < 6) {
+      tampilkanPesan('Password minimal 6 karakter.', 'error');
+      return;
+    }
+
+    tampilkanPesan('Memproses pendaftaran...', 'sukses');
+
+    const { data, error } = await db.auth.signUp({
+      email: email,
+      password: pass,
+      options: {
+        data: { nama_lengkap: nama }
+      }
+    });
+
+    if (error) {
+      tampilkanPesan('Gagal daftar: ' + error.message, 'error');
+      return;
+    }
+
+    tampilkanPesan('Pendaftaran berhasil! Silakan cek email untuk verifikasi, lalu masuk lewat tab Masuk.', 'sukses');
+  }
+
+  async function prosesMasuk() {
+    const email = document.getElementById('emailMasuk').value.trim();
+    const pass = document.getElementById('passMasuk').value;
+
+    if (!email || !pass) {
+      tampilkanPesan('Mohon isi email dan password.', 'error');
+      return;
+    }
+
+    tampilkanPesan('Memproses...', 'sukses');
+
+    const { data, error } = await db.auth.signInWithPassword({
+      email: email,
+      password: pass
+    });
+
+    if (error) {
+      tampilkanPesan('Gagal masuk: ' + error.message, 'error');
+      return;
+    }
+
+    tampilkanPesan('Berhasil masuk! Mengarahkan ke dashboard...', 'sukses');
+    window.location.href = "dashboard.html";
+  }
+</script>
+
+</body>
+</html>
