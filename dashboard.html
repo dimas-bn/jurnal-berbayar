@@ -85,6 +85,13 @@
   .hapus { color: #c62828; cursor: pointer; font-size: 12px; font-weight: bold; }
   .kosong { color: #999; font-size: 13px; text-align: center; padding: 16px; }
   .segera { text-align: center; padding: 40px 20px; color: #999; }
+  .baris-absen {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid #eee; flex-wrap: wrap;
+  }
+  .baris-absen .nama { flex: 2; min-width: 140px; font-size: 13px; }
+  .baris-absen select { flex: 1; min-width: 100px; }
+  .baris-absen input { flex: 0 0 70px; min-width: 70px; }
 </style>
 </head>
 <body>
@@ -174,10 +181,61 @@
     </div>
   </div>
 
-  <!-- PANEL LAIN (SEGERA) -->
-  <div id="panelJurnal" class="panel"><div class="segera">🚧 Fitur Isi Jurnal sedang disiapkan, menyusul di tahap berikutnya.</div></div>
-  <div id="panelRiwayat" class="panel"><div class="segera">🚧 Fitur Riwayat sedang disiapkan, menyusul di tahap berikutnya.</div></div>
-  <div id="panelRekap" class="panel"><div class="segera">🚧 Fitur Rekap sedang disiapkan, menyusul di tahap berikutnya.</div></div>
+  <!-- PANEL ISI JURNAL -->
+  <div id="panelJurnal" class="panel">
+    <div class="box">
+      <h3>Isi Jurnal Hari Ini — <span id="tanggalHariIni"></span></h3>
+      <div class="row">
+        <select id="kelasUntukJurnal" onchange="muatSiswaUntukAbsensi()"></select>
+        <input type="text" id="jamKeJurnal" placeholder="Jam ke, misal: 1-3">
+      </div>
+      <div class="row">
+        <input type="text" id="materiJurnal" placeholder="Materi yang diajarkan" style="flex:2;">
+      </div>
+      <div class="row">
+        <input type="text" id="catatanJurnal" placeholder="Catatan tambahan (opsional)" style="flex:2;">
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>Absensi &amp; Poin Siswa</h3>
+      <div id="daftarAbsensi"></div>
+      <div id="absensiKosong" class="kosong">Pilih kelas dulu untuk menampilkan daftar siswa.</div>
+    </div>
+
+    <button class="tambah" style="width:100%; padding:12px;" onclick="simpanJurnal()">💾 Simpan Jurnal Hari Ini</button>
+  </div>
+
+  <!-- PANEL RIWAYAT -->
+  <div id="panelRiwayat" class="panel">
+    <div class="box">
+      <h3>Riwayat Jurnal</h3>
+      <table id="tabelRiwayat">
+        <thead><tr><th>Tanggal</th><th>Kelas</th><th>Materi</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="riwayatKosong" class="kosong">Belum ada jurnal yang diisi.</div>
+    </div>
+  </div>
+
+  <!-- PANEL REKAP -->
+  <div id="panelRekap" class="panel">
+    <div class="box">
+      <h3>Rekap Bulanan</h3>
+      <div class="row">
+        <select id="kelasRekap"></select>
+        <input type="month" id="bulanRekap">
+        <button class="tambah" onclick="muatRekap()">Tampilkan</button>
+      </div>
+    </div>
+    <div class="box">
+      <table id="tabelRekap">
+        <thead><tr><th>Nama Siswa</th><th>Hadir</th><th>Izin</th><th>Sakit</th><th>Alpha</th><th>Poin</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="rekapKosong" class="kosong">Pilih kelas dan bulan, lalu klik Tampilkan.</div>
+    </div>
+  </div>
 
 </main>
 
@@ -224,6 +282,9 @@
     document.querySelectorAll('.tab')[idx].classList.add('active');
     document.getElementById('panel' + nama.charAt(0).toUpperCase() + nama.slice(1)).classList.add('active');
     if (nama === 'siswa') muatSiswa();
+    if (nama === 'jurnal') muatFormJurnal();
+    if (nama === 'riwayat') muatRiwayat();
+    if (nama === 'rekap') muatDropdownRekap();
   }
 
   // ==== KELAS ====
@@ -362,6 +423,190 @@
     if (!confirm('Hapus jadwal ini?')) return;
     await db.from('jadwal').delete().eq('id', id);
     muatJadwal();
+  }
+
+  // ==== ISI JURNAL ====
+  const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+  function tanggalHariIniISO() {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function muatFormJurnal() {
+    const now = new Date();
+    const hari = NAMA_HARI[now.getDay()];
+    const tanggalFormat = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('tanggalHariIni').textContent = tanggalFormat;
+
+    const { data: daftarKelas } = await db.from('kelas').select('id, nama_kelas').eq('guru_id', guruId).order('nama_kelas');
+    const opsi = (daftarKelas || []).map(k => `<option value="${k.id}">${k.nama_kelas}</option>`).join('');
+    document.getElementById('kelasUntukJurnal').innerHTML = opsi || '<option value="">Belum ada kelas</option>';
+
+    if (daftarKelas && daftarKelas.length > 0) {
+      muatSiswaUntukAbsensi();
+      // Coba cari jadwal hari ini untuk kelas pertama, biar Jam Ke terisi otomatis
+      const { data: jadwalHariIni } = await db.from('jadwal')
+        .select('jam_ke, kelas_id').eq('guru_id', guruId).eq('hari', hari).limit(1);
+      if (jadwalHariIni && jadwalHariIni.length > 0) {
+        document.getElementById('jamKeJurnal').value = jadwalHariIni[0].jam_ke;
+      }
+    }
+  }
+
+  async function muatSiswaUntukAbsensi() {
+    const kelasId = document.getElementById('kelasUntukJurnal').value;
+    const wadah = document.getElementById('daftarAbsensi');
+    wadah.innerHTML = '';
+
+    if (!kelasId) {
+      document.getElementById('absensiKosong').style.display = 'block';
+      return;
+    }
+
+    const { data: daftarSiswa } = await db.from('siswa')
+      .select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+
+    document.getElementById('absensiKosong').style.display = (!daftarSiswa || daftarSiswa.length === 0) ? 'block' : 'none';
+
+    (daftarSiswa || []).forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'baris-absen';
+      div.dataset.siswaId = s.id;
+      div.innerHTML = `
+        <div class="nama">${s.nomor_presensi ?? ''}. ${s.nama_siswa}</div>
+        <select class="status-absen">
+          <option value="Hadir" selected>Hadir</option>
+          <option value="Izin">Izin</option>
+          <option value="Sakit">Sakit</option>
+          <option value="Alpha">Alpha</option>
+          <option value="Dispensasi">Dispensasi</option>
+        </select>
+        <input type="number" class="poin-absen" placeholder="Poin" value="0">
+      `;
+      wadah.appendChild(div);
+    });
+  }
+
+  async function simpanJurnal() {
+    const kelasId = document.getElementById('kelasUntukJurnal').value;
+    const jamKe = document.getElementById('jamKeJurnal').value.trim();
+    const materi = document.getElementById('materiJurnal').value.trim();
+    const catatan = document.getElementById('catatanJurnal').value.trim();
+
+    if (!kelasId) { alert('Pilih kelas terlebih dahulu.'); return; }
+    if (!jamKe) { alert('Mohon isi jam ke.'); return; }
+
+    const now = new Date();
+    const hari = NAMA_HARI[now.getDay()];
+
+    const { data: jurnalBaru, error: errJurnal } = await db.from('jurnal').insert({
+      guru_id: guruId, kelas_id: kelasId, tanggal: tanggalHariIniISO(),
+      hari: hari, jam_ke: jamKe, materi: materi, catatan: catatan
+    }).select().single();
+
+    if (errJurnal) { alert('Gagal menyimpan jurnal: ' + errJurnal.message); return; }
+
+    const barisAbsen = document.querySelectorAll('#daftarAbsensi .baris-absen');
+    const dataAbsensi = [];
+    const dataPoin = [];
+
+    barisAbsen.forEach(baris => {
+      const siswaId = baris.dataset.siswaId;
+      const status = baris.querySelector('.status-absen').value;
+      const poin = parseInt(baris.querySelector('.poin-absen').value) || 0;
+
+      dataAbsensi.push({ jurnal_id: jurnalBaru.id, siswa_id: siswaId, status: status });
+      if (poin !== 0) {
+        dataPoin.push({ jurnal_id: jurnalBaru.id, siswa_id: siswaId, jumlah_poin: poin });
+      }
+    });
+
+    if (dataAbsensi.length > 0) await db.from('absensi').insert(dataAbsensi);
+    if (dataPoin.length > 0) await db.from('poin').insert(dataPoin);
+
+    alert('Jurnal hari ini berhasil disimpan!');
+    document.getElementById('materiJurnal').value = '';
+    document.getElementById('catatanJurnal').value = '';
+    muatSiswaUntukAbsensi();
+  }
+
+  // ==== RIWAYAT ====
+  async function muatRiwayat() {
+    const { data: daftarJurnal } = await db.from('jurnal')
+      .select('id, tanggal, materi, kelas:kelas_id (nama_kelas)')
+      .eq('guru_id', guruId).order('tanggal', { ascending: false }).limit(50);
+
+    const tbody = document.querySelector('#tabelRiwayat tbody');
+    tbody.innerHTML = '';
+    document.getElementById('riwayatKosong').style.display = (!daftarJurnal || daftarJurnal.length === 0) ? 'block' : 'none';
+
+    (daftarJurnal || []).forEach(j => {
+      const tgl = new Date(j.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${tgl}</td><td>${j.kelas?.nama_kelas ?? '-'}</td><td>${j.materi ?? '-'}</td>
+        <td><span class="hapus" onclick="hapusJurnal('${j.id}')">Hapus</span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function hapusJurnal(id) {
+    if (!confirm('Hapus jurnal ini? Data absensi & poin terkait juga akan terhapus.')) return;
+    await db.from('jurnal').delete().eq('id', id);
+    muatRiwayat();
+  }
+
+  // ==== REKAP ====
+  async function muatDropdownRekap() {
+    const { data: daftarKelas } = await db.from('kelas').select('id, nama_kelas').eq('guru_id', guruId).order('nama_kelas');
+    const opsi = (daftarKelas || []).map(k => `<option value="${k.id}">${k.nama_kelas}</option>`).join('');
+    document.getElementById('kelasRekap').innerHTML = opsi || '<option value="">Belum ada kelas</option>';
+
+    const now = new Date();
+    document.getElementById('bulanRekap').value = now.toISOString().slice(0, 7);
+  }
+
+  async function muatRekap() {
+    const kelasId = document.getElementById('kelasRekap').value;
+    const bulan = document.getElementById('bulanRekap').value; // format YYYY-MM
+    const tbody = document.querySelector('#tabelRekap tbody');
+    tbody.innerHTML = '';
+
+    if (!kelasId || !bulan) {
+      document.getElementById('rekapKosong').style.display = 'block';
+      return;
+    }
+
+    const { data: daftarSiswa } = await db.from('siswa')
+      .select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+
+    const tglAwal = bulan + '-01';
+    const tglAkhir = bulan + '-31';
+
+    const { data: jurnalBulanIni } = await db.from('jurnal')
+      .select('id').eq('kelas_id', kelasId).gte('tanggal', tglAwal).lte('tanggal', tglAkhir);
+
+    const idJurnal = (jurnalBulanIni || []).map(j => j.id);
+    document.getElementById('rekapKosong').style.display = (idJurnal.length === 0) ? 'block' : 'none';
+
+    let semuaAbsensi = [], semuaPoin = [];
+    if (idJurnal.length > 0) {
+      const { data: absensiData } = await db.from('absensi').select('siswa_id, status').in('jurnal_id', idJurnal);
+      const { data: poinData } = await db.from('poin').select('siswa_id, jumlah_poin').in('jurnal_id', idJurnal);
+      semuaAbsensi = absensiData || [];
+      semuaPoin = poinData || [];
+    }
+
+    (daftarSiswa || []).forEach(s => {
+      const absenSiswa = semuaAbsensi.filter(a => a.siswa_id === s.id);
+      const hitung = status => absenSiswa.filter(a => a.status === status).length;
+      const totalPoin = semuaPoin.filter(p => p.siswa_id === s.id).reduce((total, p) => total + p.jumlah_poin, 0);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${s.nama_siswa}</td><td>${hitung('Hadir')}</td><td>${hitung('Izin')}</td>
+        <td>${hitung('Sakit')}</td><td>${hitung('Alpha')}</td><td>${totalPoin}</td>`;
+      tbody.appendChild(tr);
+    });
   }
 
   init();
