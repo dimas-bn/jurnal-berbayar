@@ -780,6 +780,28 @@
     <button class="btn-keluar" onclick="keluar()">Keluar</button>
   </header>
 
+  <!-- Banner peringatan: masa aktif hampir habis (masih bisa pakai) -->
+  <div id="trialWarningBanner" style="display:none; background:#F4E3C5; color:#5C4319; padding:11px 16px; font-size:13px; text-align:center; border-bottom:1px solid #E0C68F;">
+    <span id="trialWarningText"></span>
+    <a href="https://t.me/+2uZH5Az4p600Nzll" target="_blank" rel="noopener" style="color:#8F3D2D; font-weight:bold; text-decoration:underline; margin-left:6px;">Perpanjang sekarang</a>
+  </div>
+
+  <!-- Overlay: masa aktif SUDAH habis (akses dikunci) -->
+  <div id="trialExpiredOverlay" style="display:none; position:fixed; inset:0; background:rgba(20,30,24,0.92); z-index:100; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--paper); border-radius:14px; max-width:380px; width:100%; padding:28px 24px; text-align:center; font-family:'IBM Plex Sans',sans-serif;">
+      <div style="font-size:38px; margin-bottom:8px;">⏳</div>
+      <h2 style="font-family:'Fraunces',serif; font-style:italic; color:var(--ink); margin:0 0 10px; font-size:22px;">Masa Aktif Berakhir</h2>
+      <p id="trialExpiredText" style="color:var(--muted); font-size:14px; line-height:1.6; margin:0 0 18px;"></p>
+      <div style="background:#fff; border:1px solid var(--paper-line); border-radius:10px; padding:14px; margin-bottom:18px; font-size:13px; text-align:left; color:var(--ink);">
+        <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Bulanan</span><strong>Rp9.000/bulan</strong></div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Tahunan</span><strong>Rp86.000/tahun</strong></div>
+        <div style="display:flex; justify-content:space-between; padding:4px 0;"><span>Lifetime</span><strong>Rp195.000</strong></div>
+      </div>
+      <a href="https://t.me/+2uZH5Az4p600Nzll" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-decoration:none; margin-bottom:10px;">💬 Perpanjang / Upgrade via Telegram</a>
+      <button type="button" onclick="keluar()" style="background:none; border:none; color:var(--muted); font-size:13px; text-decoration:underline; cursor:pointer;">Keluar</button>
+    </div>
+  </div>
+
   <nav class="tabs">
     <button id="tab-setup" onclick="showTab('setup')">Setup</button>
     <button id="tab-isi" class="active" onclick="showTab('isi')">Isi Jurnal</button>
@@ -1042,13 +1064,47 @@
       guruId = session.user.id;
 
       const { data: profil } = await db.from('profil_guru')
-        .select('nama_lengkap, paket').eq('id', guruId).single();
-      if (profil) document.getElementById('infoGuru').textContent = `${profil.nama_lengkap} · Paket ${profil.paket}`;
+        .select('nama_lengkap, paket, tanggal_berakhir').eq('id', guruId).single();
+
+      if (profil) {
+        const labelPaket = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' }[profil.paket] || profil.paket;
+        let infoTeks = `${profil.nama_lengkap} · Paket ${labelPaket}`;
+
+        if (profil.tanggal_berakhir) {
+          const berakhir = new Date(profil.tanggal_berakhir);
+          const sekarang = new Date();
+          const sisaHari = Math.ceil((berakhir - sekarang) / (1000 * 60 * 60 * 24));
+
+          if (sisaHari <= 0) {
+            tampilkanOverlayExpired(labelPaket);
+            document.getElementById('infoGuru').textContent = infoTeks + ' (berakhir)';
+            return; // hentikan pemuatan data lain, akses dikunci
+          } else if (sisaHari <= 2) {
+            infoTeks += ` (tersisa ${sisaHari} hari)`;
+            tampilkanBannerWarning(sisaHari);
+          }
+        }
+        document.getElementById('infoGuru').textContent = infoTeks;
+      }
 
       initTanggal();
       muatDaftarKelasGlobal();
       muatJadwalGlobal();
       cekPengingatHariIni();
+    }
+
+    function tampilkanBannerWarning(sisaHari) {
+      document.getElementById('trialWarningText').textContent =
+        sisaHari === 1 ? '⏰ Masa aktif Anda berakhir besok.' : `⏰ Masa aktif Anda tersisa ${sisaHari} hari.`;
+      document.getElementById('trialWarningBanner').style.display = 'block';
+    }
+
+    function tampilkanOverlayExpired(labelPaket) {
+      document.getElementById('trialExpiredText').textContent =
+        labelPaket === 'Trial'
+          ? 'Masa uji coba 7 hari Anda sudah berakhir. Pilih salah satu paket di bawah untuk melanjutkan pemakaian.'
+          : `Paket ${labelPaket} Anda sudah berakhir. Perpanjang untuk melanjutkan pemakaian.`;
+      document.getElementById('trialExpiredOverlay').style.display = 'flex';
     }
 
     async function keluar() { await db.auth.signOut(); window.location.href = "index.html"; }
