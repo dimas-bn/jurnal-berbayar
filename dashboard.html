@@ -1078,7 +1078,13 @@
       const { data: profil } = await db.from('profil_guru')
         .select('nama_lengkap, paket, tanggal_berakhir').eq('id', guruId).single();
 
-      if (profil) {
+      if (!profil) {
+        alert('Akun Anda tidak ditemukan atau sudah dinonaktifkan. Anda akan dikeluarkan.');
+        await keluar();
+        return;
+      }
+
+      {
         const labelPaket = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' }[profil.paket] || profil.paket;
         let infoTeks = `${profil.nama_lengkap} · Paket ${labelPaket}`;
 
