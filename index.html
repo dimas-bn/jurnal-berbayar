@@ -175,6 +175,30 @@
     el.textContent = '';
   }
 
+  function terjemahkanError(pesanAsli) {
+    const kamus = {
+      'Email not confirmed': 'Email belum terkonfirmasi. Cek inbox/spam email Anda dan klik link konfirmasinya terlebih dahulu.',
+      'Invalid login credentials': 'Email atau password salah.',
+      'User already registered': 'Email ini sudah terdaftar. Coba masuk lewat tab Masuk.',
+      'Password should be at least 6 characters': 'Password minimal 6 karakter.',
+      'Unable to validate email address: invalid format': 'Format email tidak valid.',
+      'For security purposes, you can only request this after': 'Terlalu banyak percobaan. Mohon tunggu sebentar lalu coba lagi.',
+      'Email address': 'Alamat email tidak valid.',
+      'Signup requires a valid password': 'Password wajib diisi dengan benar.',
+      'Anonymous sign-ins are disabled': 'Metode masuk ini tidak diaktifkan.',
+      'User not found': 'Akun dengan email ini tidak ditemukan.',
+      'Email rate limit exceeded': 'Terlalu banyak permintaan email. Mohon tunggu beberapa saat lalu coba lagi.',
+      'Token has expired or is invalid': 'Link/kode ini sudah kedaluwarsa atau tidak valid. Coba ulangi prosesnya dari awal.',
+      'New password should be different from the old password': 'Password baru harus berbeda dari password lama.',
+      'Failed to fetch': 'Gagal terhubung ke server. Periksa koneksi internet Anda.',
+      'network': 'Gagal terhubung ke server. Periksa koneksi internet Anda.'
+    };
+    for (const kunci in kamus) {
+      if (pesanAsli.includes(kunci)) return kamus[kunci];
+    }
+    return pesanAsli;
+  }
+
   async function prosesDaftar() {
     const nama = document.getElementById('namaDaftar').value.trim();
     const email = document.getElementById('emailDaftar').value.trim();
@@ -200,7 +224,7 @@
     });
 
     if (error) {
-      tampilkanPesan('Gagal daftar: ' + error.message, 'error');
+      tampilkanPesan('Gagal daftar: ' + terjemahkanError(error.message), 'error');
       return;
     }
 
@@ -224,7 +248,7 @@
     });
 
     if (error) {
-      tampilkanPesan('Gagal masuk: ' + error.message, 'error');
+      tampilkanPesan('Gagal masuk: ' + terjemahkanError(error.message), 'error');
       return;
     }
 
