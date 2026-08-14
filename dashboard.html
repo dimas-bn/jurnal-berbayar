@@ -948,7 +948,7 @@
       <p class="eyebrow">Catatan tersimpan</p>
       <p class="tanggal-hari">Riwayat Jurnal</p>
 
-      <a id="linkExportExcel" href="#" target="_blank" class="print-btn export-link disabled">📥 Export Semua Data (Excel)</a>
+      <a id="linkExportExcel" href="#" target="_blank" class="print-btn export-link">📥 Export Semua Data (Excel)</a>
       <button type="button" id="btnToggleSampah" class="entry-btn" style="margin:14px 0 4px;">🗑️ Sampah</button>
 
       <div id="sampahSection" style="display:none; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--paper-line);">
@@ -1449,18 +1449,15 @@
       if (!kelasId) return;
       const btn = this;
       btn.disabled = true; btn.textContent = 'Memuat…';
-      const { data } = await db.from('jurnal').select('jam_ke, mapel, materi')
+      const { data } = await db.from('jurnal').select('mapel, materi')
         .eq('kelas_id', kelasId).is('dihapus_pada', null)
         .order('tanggal', { ascending: false }).order('dibuat_pada', { ascending: false }).limit(1);
       btn.disabled = false; btn.textContent = '🔁 Salin dari jurnal terakhir kelas ini';
       if (!data || !data.length) { alert('Belum ada jurnal sebelumnya untuk kelas ini.'); return; }
       const j = data[0];
-      const parsed = parseJamKe(j.jam_ke);
-      document.getElementById('jamDari').value = parsed.dari;
-      document.getElementById('jamSampai').value = parsed.sampai;
+      // Sengaja TIDAK menyalin Jam Ke — itu mengikuti jadwal hari ini, bukan jurnal lama.
       document.getElementById('mapel').value = j.mapel || '';
       document.getElementById('materi').value = j.materi || '';
-      updateJadwalSuggest();
     });
 
     // ==== CATATAN PERSIAPAN ====
