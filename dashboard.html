@@ -1334,8 +1334,16 @@
       muatCatatan();
     }
 
+    function tanggalLokalISO(d) {
+      d = d || new Date();
+      const tahun = d.getFullYear();
+      const bulan = String(d.getMonth() + 1).padStart(2, '0');
+      const tgl = String(d.getDate()).padStart(2, '0');
+      return `${tahun}-${bulan}-${tgl}`;
+    }
+
     function initTanggal() {
-      document.getElementById('tanggal').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('tanggal').value = tanggalLokalISO();
       updateLabelHari();
     }
     document.getElementById('tanggal').addEventListener('change', updateLabelHari);
@@ -1531,7 +1539,7 @@
     async function cekPengingatHariIni() {
       const now = new Date();
       const hariIni = HARI_ID[now.getDay()];
-      const tglIni = now.toISOString().slice(0, 10);
+      const tglIni = tanggalLokalISO(now);
 
       const { data: jadwalHariIni } = await db.from('jadwal').select('jam_ke, kelas:kelas_id (id, nama_kelas)').eq('guru_id', guruId).eq('hari', hariIni);
       if (!jadwalHariIni || !jadwalHariIni.length) { document.getElementById('reminderBanner').style.display = 'none'; return; }
