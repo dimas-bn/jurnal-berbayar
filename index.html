@@ -8,12 +8,14 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1E2B22">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
   body {
-    font-family: Arial, sans-serif;
-    background: #f4f9f4;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    background: #F6F2E4;
     margin: 0;
     display: flex;
     align-items: center;
@@ -23,85 +25,99 @@
   }
   .card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    padding: 32px;
+    border: 1px solid #D8CDB0;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(30,43,34,0.08);
+    padding: 34px 30px;
     width: 100%;
     max-width: 380px;
   }
   h1 {
-    color: #2E7D32;
-    font-size: 22px;
-    margin: 0 0 4px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    color: #1E2B22;
+    font-size: 25px;
+    margin: 0 0 6px;
     text-align: center;
   }
   p.subtitle {
-    color: #777;
-    font-size: 14px;
+    color: #5C5240;
+    font-size: 14.5px;
+    line-height: 1.5;
     text-align: center;
-    margin: 0 0 24px;
+    margin: 0 0 26px;
   }
   .tabs {
     display: flex;
-    margin-bottom: 20px;
-    border-radius: 8px;
+    margin-bottom: 22px;
+    border-radius: 9px;
     overflow: hidden;
-    border: 1px solid #ddd;
+    border: 1px solid #D8CDB0;
   }
   .tab {
     flex: 1;
     text-align: center;
-    padding: 10px;
+    padding: 11px;
     cursor: pointer;
-    background: #f4f9f4;
-    color: #555;
-    font-weight: bold;
-    font-size: 14px;
+    background: #F6F2E4;
+    color: #5C5240;
+    font-weight: 600;
+    font-size: 14.5px;
   }
   .tab.active {
-    background: #2E7D32;
-    color: #fff;
+    background: #1E2B22;
+    color: #F6F2E4;
   }
   label {
     display: block;
-    font-size: 13px;
-    color: #444;
-    margin-bottom: 4px;
-    margin-top: 14px;
+    font-size: 13.5px;
+    color: #3E3A2E;
+    font-weight: 600;
+    margin-bottom: 5px;
+    margin-top: 15px;
   }
   input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 11px 13px;
+    border: 1px solid #D8CDB0;
+    border-radius: 7px;
+    font-size: 15px;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    color: #1E2B22;
+  }
+  input:focus {
+    outline: none;
+    border-color: #A6493C;
   }
   button.submit {
     width: 100%;
-    margin-top: 22px;
-    padding: 12px;
-    background: #2E7D32;
-    color: #fff;
+    margin-top: 24px;
+    padding: 13px;
+    background: #1E2B22;
+    color: #F6F2E4;
     border: none;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 15px;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 15.5px;
     cursor: pointer;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
   }
   button.submit:disabled {
-    background: #aaa;
+    background: #A79E88;
     cursor: not-allowed;
   }
   .pesan {
     margin-top: 16px;
-    font-size: 13px;
+    font-size: 13.5px;
+    line-height: 1.5;
     text-align: center;
-    padding: 10px;
-    border-radius: 6px;
+    padding: 11px;
+    border-radius: 7px;
     display: none;
   }
-  .pesan.error { background: #fdecea; color: #c62828; display: block; }
-  .pesan.sukses { background: #e8f5e9; color: #2E7D32; display: block; }
+  .pesan.error { background: #F5E3DF; color: #8F3D2D; display: block; }
+  .pesan.sukses { background: #E6EEE6; color: #1E2B22; display: block; }
   .form-section { display: none; }
   .form-section.active { display: block; }
 </style>
