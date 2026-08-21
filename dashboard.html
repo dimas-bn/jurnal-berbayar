@@ -942,8 +942,14 @@
       <label for="mapel">Mata pelajaran</label>
       <input type="text" id="mapel" placeholder="Otomatis terisi dari kelas, bisa diubah">
 
-      <label for="materi">Materi / hal yang perlu dicatat</label>
-      <textarea id="materi" placeholder="Contoh: Persamaan kuadrat, latihan soal bab 3..."></textarea>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;">
+        <label for="materi" style="margin:0;">Materi / hal yang perlu dicatat</label>
+        <div style="display:flex; gap:6px;">
+          <button type="button" id="btnSalinMateri" class="entry-btn" style="font-size:11.5px; padding:4px 9px;">📋 Salin</button>
+          <button type="button" id="btnPerbesarMateri" class="entry-btn" style="font-size:11.5px; padding:4px 9px;">⤢ Perbesar</button>
+        </div>
+      </div>
+      <textarea id="materi" placeholder="Contoh: Persamaan kuadrat, latihan soal bab 3..." style="min-height:150px;"></textarea>
 
       <label>Absensi siswa</label>
       <div class="siswa-list" id="siswaList">
@@ -1688,6 +1694,7 @@
         <div class="entry-materi">${escapeHtml(e.materi || '(tanpa catatan materi)')}</div>
         <div class="rekap-chips">${['Hadir','Izin','Sakit','Dispensasi','Alpa'].map(st => `<span class="chip ${st}">${st} ${e.rekap[st] || 0}</span>`).join('')}</div>
         <div class="entry-actions">
+          <button type="button" class="entry-btn" data-action="salin-materi" data-id="${e.id}">📋 Salin Materi</button>
           <button type="button" class="entry-btn" data-action="edit" data-id="${e.id}">Edit</button>
           <button type="button" class="entry-btn danger" data-action="hapus" data-id="${e.id}">Hapus</button>
         </div></div>`).join('');
@@ -1703,12 +1710,25 @@
       renderRiwayatFiltered();
     });
 
-    document.getElementById('riwayatList').addEventListener('click', ev => {
+    document.getElementById('riwayatList').addEventListener('click', async ev => {
       const btn = ev.target.closest('button[data-action]');
       if (!btn) return;
       const id = btn.dataset.id;
       if (btn.dataset.action === 'edit') mulaiEdit(id);
       else if (btn.dataset.action === 'hapus') hapusJurnalUI(id);
+      else if (btn.dataset.action === 'salin-materi') {
+        const entri = riwayatData.find(e => e.id === id);
+        const teks = entri ? entri.materi : '';
+        if (!teks) { alert('Entri ini tidak punya catatan materi.'); return; }
+        try {
+          await navigator.clipboard.writeText(teks);
+          const asli = btn.textContent;
+          btn.textContent = '✓ Tersalin';
+          setTimeout(() => { btn.textContent = asli; }, 1500);
+        } catch {
+          prompt('Salin materi ini secara manual:', teks);
+        }
+      }
     });
 
     async function mulaiEdit(id) {
@@ -1778,6 +1798,26 @@
       muatCatatan();
     }
     document.getElementById('btnBatalEdit').addEventListener('click', resetForm);
+
+    document.getElementById('btnSalinMateri').addEventListener('click', async function() {
+      const teks = document.getElementById('materi').value;
+      if (!teks) { alert('Belum ada materi untuk disalin.'); return; }
+      try {
+        await navigator.clipboard.writeText(teks);
+        const asli = this.textContent;
+        this.textContent = '✓ Tersalin';
+        setTimeout(() => { this.textContent = asli; }, 1500);
+      } catch {
+        prompt('Salin materi ini secara manual:', teks);
+      }
+    });
+
+    document.getElementById('btnPerbesarMateri').addEventListener('click', function() {
+      const ta = document.getElementById('materi');
+      const diperbesar = ta.style.minHeight === '340px';
+      ta.style.minHeight = diperbesar ? '150px' : '340px';
+      this.textContent = diperbesar ? '⤢ Perbesar' : '⤡ Perkecil';
+    });
 
     async function hapusJurnalUI(id) {
       if (!confirm('Hapus jurnal ini? Data akan dipindah ke Sampah dulu, masih bisa dipulihkan lewat menu Sampah di tab ini.')) return;
