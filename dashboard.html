@@ -831,6 +831,7 @@
     <button id="tab-setup" onclick="showTab('setup')">Setup</button>
     <button id="tab-isi" class="active" onclick="showTab('isi')">Isi Jurnal</button>
     <button id="tab-riwayat" onclick="showTab('riwayat')">Riwayat</button>
+    <button id="tab-catatan" onclick="showTab('catatan')">Catatan</button>
     <button id="tab-rekap" onclick="showTab('rekap')">Rekap</button>
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
   </nav>
@@ -1003,6 +1004,19 @@
       <div id="riwayatList"><p class="loading">Memuat riwayat…</p></div>
     </section>
 
+    <!-- ===== TAB: CATATAN (Kumpulan Catatan Persiapan) ===== -->
+    <section id="panel-catatan" class="page" style="display:none;">
+      <p class="eyebrow">Persiapan mengajar</p>
+      <p class="tanggal-hari">Kumpulan Catatan Persiapan</p>
+
+      <div class="filter-bar">
+        <select id="filterKelasCatatan"><option value="">Semua kelas</option></select>
+        <button type="button" id="btnResetFilterCatatan" class="reset-filter">Reset filter</button>
+      </div>
+
+      <div id="catatanListSemua"><p class="loading">Memuat catatan…</p></div>
+    </section>
+
     <!-- ===== TAB: REKAP BULANAN ===== -->
     <section id="panel-rekap" class="page" style="display:none;">
       <p class="eyebrow">Laporan kehadiran</p>
@@ -1164,12 +1178,13 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['setup','isi','riwayat','rekap','statistik'].forEach(t => {
+      ['setup','isi','riwayat','catatan','rekap','statistik'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
       document.getElementById('actionBar').style.display = (tab === 'isi') ? 'block' : 'none';
       if (tab === 'riwayat') muatRiwayat();
+      if (tab === 'catatan') muatCatatanSemua();
       if (tab === 'rekap') isiFilterRekapKelas();
       if (tab === 'statistik') initStatFilter();
       if (tab === 'setup') showSubtab(subtabAktif);
@@ -1724,6 +1739,116 @@
       document.getElementById('filterDari').value = '';
       document.getElementById('filterSampai').value = '';
       renderRiwayatFiltered();
+    });
+
+    // ================== TAB: CATATAN (Kumpulan Catatan Persiapan) ==================
+    let catatanSemuaData = [];
+
+    async function muatCatatanSemua() {
+      const listEl = document.getElementById('catatanListSemua');
+      listEl.innerHTML = '<p class="loading">Memuat catatan…</p>';
+
+      const opsiKelas = daftarKelas.map(k => `<option value="${k.id}">${escapeHtml(k.kelas)}</option>`).join('');
+      document.getElementById('filterKelasCatatan').innerHTML = '<option value="">Semua kelas</option>' + opsiKelas;
+
+      const { data, error } = await db.from('catatan_persiapan')
+        .select('id, kelas_id, tanggal, teks, kelas:kelas_id (nama_kelas)')
+        .eq('guru_id', guruId)
+        .order('tanggal', { ascending: false });
+
+      if (error) { listEl.innerHTML = '<p class="empty-hint">Gagal memuat catatan: ' + escapeHtml(error.message) + '</p>'; return; }
+
+      catatanSemuaData = (data || []).map(c => {
+        const d = new Date(c.tanggal + 'T00:00:00');
+        return {
+          id: c.id, kelasId: c.kelas_id, kelas: c.kelas?.nama_kelas || '-',
+          tanggalISO: c.tanggal,
+          tanggal: d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear(),
+          teks: c.teks
+        };
+      });
+
+      renderCatatanSemuaFiltered();
+    }
+
+    function renderCatatanSemuaFiltered() {
+      const kelasFilter = document.getElementById('filterKelasCatatan').value;
+      const filtered = kelasFilter ? catatanSemuaData.filter(c => c.kelasId === kelasFilter) : catatanSemuaData;
+      renderCatatanSemua(filtered);
+    }
+
+    function renderCatatanSemua(list) {
+      const listEl = document.getElementById('catatanListSemua');
+      if (!catatanSemuaData.length) { listEl.innerHTML = '<p class="empty-hint">Belum ada catatan persiapan yang ditulis. Catatan bisa ditambahkan lewat tab Isi Jurnal, di kotak "Catatan Persiapan".</p>'; return; }
+      if (!list.length) { listEl.innerHTML = '<p class="no-match">Tidak ada catatan untuk kelas ini.</p>'; return; }
+
+      listEl.innerHTML = list.map(c => `<div class="entry-card" data-catatan-id="${c.id}">
+        <div class="entry-top"><span class="entry-date">${escapeHtml(c.tanggal)}</span><span class="entry-kelas">${escapeHtml(c.kelas)}</span></div>
+        <p class="catatan-text-view" style="white-space:pre-wrap; font-size:13.5px; line-height:1.6; margin:6px 0 10px; color:var(--ink);">${escapeHtml(c.teks)}</p>
+        <textarea class="catatan-edit-input" style="display:none; width:100%; min-height:100px; padding:10px; border:1px solid var(--rule); border-radius:6px; font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; margin-bottom:10px;">${escapeHtml(c.teks)}</textarea>
+        <div class="entry-actions">
+          <button type="button" class="entry-btn" data-action="edit-catatan" data-id="${c.id}">Edit</button>
+          <button type="button" class="entry-btn" data-action="simpan-catatan" data-id="${c.id}" style="display:none;">Simpan</button>
+          <button type="button" class="entry-btn" data-action="batal-catatan" data-id="${c.id}" style="display:none;">Batal</button>
+          <button type="button" class="entry-btn danger" data-action="hapus-catatan" data-id="${c.id}">Hapus</button>
+        </div></div>`).join('');
+    }
+
+    document.getElementById('filterKelasCatatan').addEventListener('change', renderCatatanSemuaFiltered);
+    document.getElementById('btnResetFilterCatatan').addEventListener('click', () => {
+      document.getElementById('filterKelasCatatan').value = '';
+      renderCatatanSemuaFiltered();
+    });
+
+    document.getElementById('catatanListSemua').addEventListener('click', async ev => {
+      const btn = ev.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const card = btn.closest('.entry-card');
+      const viewEl = card.querySelector('.catatan-text-view');
+      const inputEl = card.querySelector('.catatan-edit-input');
+      const btnEdit = card.querySelector('[data-action="edit-catatan"]');
+      const btnSimpan = card.querySelector('[data-action="simpan-catatan"]');
+      const btnBatal = card.querySelector('[data-action="batal-catatan"]');
+      const btnHapus = card.querySelector('[data-action="hapus-catatan"]');
+
+      if (btn.dataset.action === 'edit-catatan') {
+        viewEl.style.display = 'none';
+        inputEl.style.display = 'block';
+        btnEdit.style.display = 'none';
+        btnHapus.style.display = 'none';
+        btnSimpan.style.display = 'inline-block';
+        btnBatal.style.display = 'inline-block';
+      } else if (btn.dataset.action === 'batal-catatan') {
+        viewEl.style.display = 'block';
+        inputEl.style.display = 'none';
+        btnEdit.style.display = 'inline-block';
+        btnHapus.style.display = 'inline-block';
+        btnSimpan.style.display = 'none';
+        btnBatal.style.display = 'none';
+        inputEl.value = viewEl.textContent;
+      } else if (btn.dataset.action === 'simpan-catatan') {
+        const teksBaru = inputEl.value;
+        btnSimpan.disabled = true; btnSimpan.textContent = 'Menyimpan…';
+        const { error } = await db.from('catatan_persiapan').update({ teks: teksBaru, diperbarui_pada: new Date().toISOString() }).eq('id', id);
+        btnSimpan.disabled = false; btnSimpan.textContent = 'Simpan';
+        if (error) { alert('Gagal menyimpan: ' + error.message); return; }
+        const item = catatanSemuaData.find(c => c.id === id);
+        if (item) item.teks = teksBaru;
+        viewEl.textContent = teksBaru;
+        viewEl.style.display = 'block';
+        inputEl.style.display = 'none';
+        btnEdit.style.display = 'inline-block';
+        btnHapus.style.display = 'inline-block';
+        btnSimpan.style.display = 'none';
+        btnBatal.style.display = 'none';
+      } else if (btn.dataset.action === 'hapus-catatan') {
+        if (!confirm('Hapus catatan persiapan ini?')) return;
+        const { error } = await db.from('catatan_persiapan').delete().eq('id', id);
+        if (error) { alert('Gagal menghapus: ' + error.message); return; }
+        catatanSemuaData = catatanSemuaData.filter(c => c.id !== id);
+        renderCatatanSemuaFiltered();
+      }
     });
 
     document.getElementById('riwayatList').addEventListener('click', async ev => {
