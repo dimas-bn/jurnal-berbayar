@@ -90,6 +90,26 @@
     outline: none;
     border-color: #A6493C;
   }
+  .pass-wrap {
+    position: relative;
+  }
+  .pass-wrap input {
+    padding-right: 44px;
+  }
+  .toggle-pass {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 17px;
+    padding: 8px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.55;
+  }
+  .toggle-pass:hover { opacity: 0.9; }
   button.submit {
     width: 100%;
     margin-top: 24px;
@@ -139,7 +159,10 @@
     <label for="emailMasuk">Email</label>
     <input type="email" id="emailMasuk" placeholder="nama@email.com">
     <label for="passMasuk">Password</label>
-    <input type="password" id="passMasuk" placeholder="Masukkan password">
+    <div class="pass-wrap">
+      <input type="password" id="passMasuk" placeholder="Masukkan password">
+      <button type="button" class="toggle-pass" data-target="passMasuk" aria-label="Tampilkan password">👁️</button>
+    </div>
     <button class="submit" onclick="prosesMasuk()">Masuk</button>
   </div>
 
@@ -150,7 +173,10 @@
     <label for="emailDaftar">Email</label>
     <input type="email" id="emailDaftar" placeholder="nama@email.com">
     <label for="passDaftar">Buat Password</label>
-    <input type="password" id="passDaftar" placeholder="Minimal 6 karakter">
+    <div class="pass-wrap">
+      <input type="password" id="passDaftar" placeholder="Minimal 6 karakter">
+      <button type="button" class="toggle-pass" data-target="passDaftar" aria-label="Tampilkan password">👁️</button>
+    </div>
     <button class="submit" onclick="prosesDaftar()">Daftar Sekarang</button>
   </div>
 
@@ -170,6 +196,16 @@
     const { data: { session } } = await db.auth.getSession();
     if (session) window.location.href = "dashboard.html";
   })();
+
+  document.querySelectorAll('.toggle-pass').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const tampil = input.type === 'text';
+      input.type = tampil ? 'password' : 'text';
+      btn.textContent = tampil ? '👁️' : '🙈';
+      btn.setAttribute('aria-label', tampil ? 'Tampilkan password' : 'Sembunyikan password');
+    });
+  });
 
   function gantiTab(tab) {
     document.getElementById('tabMasuk').classList.toggle('active', tab === 'masuk');
