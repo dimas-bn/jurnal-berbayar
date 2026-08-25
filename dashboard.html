@@ -611,7 +611,7 @@
     }
 
     @media print {
-      header, nav.tabs, .action-bar, #btnTampilkanRekap, .print-btn, .rekap-actions { display: none !important; }
+      header, nav.tabs, .action-bar, #btnTampilkanRekap, #btnHitungPoin, .print-btn, .rekap-actions { display: none !important; }
       body { background: #fff; }
       main { padding: 0; max-width: 100%; }
       .page { box-shadow: none; background: #fff; }
@@ -737,22 +737,22 @@
 
     #btnKeAtas {
       position: fixed;
-      right: 18px;
-      bottom: 88px;
-      width: 53px;
-      height: 53px;
-      border-radius: 40%;
-      background: var(--margin);
+      right: 16px;
+      bottom: 20px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--ink);
       color: var(--paper);
       border: none;
-      font-size: 23px;
+      font-size: 19px;
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(0,0,0,0.25);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 25;
-      transition: bottom 0.5s;
+      transition: bottom 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
     #btnKeAtas.tampil { display: flex; }
@@ -851,6 +851,7 @@
   </div>
 
   <nav class="tabs">
+    <button id="tab-poin" onclick="showTab('poin')">Sistem Poin</button>
     <button id="tab-petunjuk" onclick="showTab('petunjuk')">Petunjuk</button>
     <button id="tab-setup" onclick="showTab('setup')">Setup</button>
     <button id="tab-isi" class="active" onclick="showTab('isi')">Isi Jurnal</button>
@@ -861,6 +862,79 @@
   </nav>
 
   <main>
+    <!-- ===== TAB: SISTEM POIN (Filosofi & Kriteria Reward) ===== -->
+    <section id="panel-poin" class="page" style="display:none;">
+      <p class="eyebrow">Filosofi &amp; Panduan</p>
+      <p class="tanggal-hari">Sistem Poin JMO</p>
+
+      <div class="jadwal-suggest" style="margin-top:16px;">
+        <p class="jadwal-label" style="color:var(--accent-dark);">Latar Belakang</p>
+        <p style="font-size:13.5px; line-height:1.7; margin:0;">
+          Setiap kelas punya warnanya sendiri — ada yang antusias, ada yang pendiam, ada yang sesekali tertidur atau sibuk
+          sendiri. Di tengah itu, satu momen sederhana sering luput dari perhatian: seorang siswa yang berani menjawab
+          pertanyaan spontan, atau berani bertanya balik ke guru. Benar atau salah jawabannya bukan yang utama —
+          keberaniannya untuk merespons itulah yang berharga. Satu momen kecil itu bahkan bisa memicu efek berantai:
+          menginspirasi teman sekelas untuk berani melakukan hal yang sama, sekaligus membagikan wawasan baru ke seisi
+          kelas. Sistem Poin ini lahir dari kebiasaan mencatat momen-momen itu secara manual di kelas — dan dari lelahnya
+          merekap semuanya sendirian tanpa alat bantu yang memadai.
+        </p>
+      </div>
+
+      <div class="jadwal-suggest" style="margin-top:14px;">
+        <p class="jadwal-label" style="color:var(--accent-dark);">Tujuan</p>
+        <p style="font-size:13.5px; line-height:1.7; margin:0;">
+          Menyederhanakan cara guru mengapresiasi dampak positif siswa di kelas — keberanian, partisipasi, dan kontribusi
+          ke teman-temannya — sekaligus memberi sinyal awal &amp; objektif untuk siswa yang butuh perhatian lebih (sering
+          tidak fokus, absen tanpa keterangan jelas, dsb), tanpa perlu pencatatan manual yang gampang hilang atau lupa
+          direkap.
+        </p>
+      </div>
+
+      <div class="jadwal-suggest" style="margin-top:14px;">
+        <p class="jadwal-label" style="color:var(--accent-dark);">Target yang Ingin Dicapai</p>
+        <p style="font-size:13.5px; line-height:1.7; margin:0;">
+          Siswa makin berani berpartisipasi tanpa takut salah, guru punya data objektif &amp; mudah diakses untuk
+          pertimbangan penilaian, dan lambat laun budaya kelas jadi lebih hidup — didukung data, bukan sekadar kesan
+          sesaat.
+        </p>
+      </div>
+
+      <p class="stat-section-title" style="margin-top:22px;">Contoh Kriteria Reward</p>
+      <p style="font-size:13px; color:var(--muted); margin:0 0 10px;">
+        Ini panduan/contoh dari pengalaman pribadi, bukan aturan baku — silakan disesuaikan dengan kondisi kelas
+        masing-masing. Rata-rata dihitung dari skala poin 0–7, angka yang sama dengan yang tampil di Papan Poin Online.
+      </p>
+      <div class="rekap-table-wrap">
+        <table class="rekap-table">
+          <thead><tr><th>Tier</th><th>Rata-rata Poin</th><th>Contoh Bentuk Apresiasi</th></tr></thead>
+          <tbody>
+            <tr><td>🥇 Istimewa</td><td>≥ 6,0</td><td>Tambahan nilai akhir semester (porsi lebih besar)</td></tr>
+            <tr><td>🥈 Baik</td><td>5,0 – 5,9</td><td>Tambahan nilai akhir semester (porsi sedang)</td></tr>
+            <tr><td>🥉 Cukup Menonjol</td><td>4,0 – 4,9</td><td>Tambahan nilai kecil / catatan positif di rapor</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="stat-section-title" style="margin-top:22px;">Cek Siswa yang Memenuhi Kriteria</p>
+      <label for="poinKelas">Kelas</label>
+      <select id="poinKelas"><option value="">Pilih kelas…</option></select>
+
+      <div class="row2">
+        <div>
+          <label for="poinDari">Dari tanggal</label>
+          <input type="date" id="poinDari">
+        </div>
+        <div>
+          <label for="poinSampai">Sampai tanggal</label>
+          <input type="date" id="poinSampai">
+        </div>
+      </div>
+
+      <button type="button" class="submit" id="btnHitungPoin" style="margin-top:18px;">Hitung</button>
+
+      <div id="poinResult"></div>
+    </section>
+
     <!-- ===== TAB: PETUNJUK (Manual Penggunaan) ===== -->
     <section id="panel-petunjuk" class="page" style="display:none;">
       <p class="eyebrow">Panduan singkat</p>
@@ -1270,7 +1344,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['petunjuk','setup','isi','riwayat','catatan','rekap','statistik'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','rekap','statistik'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -1280,6 +1354,7 @@
       if (tab === 'catatan') muatCatatanSemua();
       if (tab === 'rekap') isiFilterRekapKelas();
       if (tab === 'statistik') initStatFilter();
+      if (tab === 'poin') isiFilterPoinKelas();
       if (tab === 'setup') showSubtab(subtabAktif);
     }
 
@@ -1346,7 +1421,7 @@
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
       daftarKelas = (data || []).map(k => ({ id: k.id, kelas: k.nama_kelas, mapel: k.mata_pelajaran }));
       const opsi = '<option value="">Pilih kelas…</option>' + daftarKelas.map(k => `<option value="${k.id}">${escapeHtml(k.kelas)}</option>`).join('');
-      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas'].forEach(id => {
+      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = opsi;
       });
@@ -2211,6 +2286,86 @@
         `<p class="rekap-summary">${escapeHtml(data.kelas)} — ${namaBulan} ${data.tahun} · Total pertemuan: ${data.totalPertemuan} kali</p>
         <div class="rekap-table-wrap"><table class="rekap-table"><thead><tr><th>No</th><th>Nama</th><th>H</th><th>I</th><th>S</th><th>D</th><th>A</th><th>% Hadir</th><th>Rata² Poin</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div class="rekap-actions"><button type="button" class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button></div>`;
+    }
+
+    // ================== SISTEM POIN (kriteria reward) ==================
+    function isiFilterPoinKelas() {
+      if (!document.getElementById('poinSampai').value) {
+        const now = new Date();
+        const awalBulan = new Date(now.getFullYear(), now.getMonth(), 1);
+        document.getElementById('poinDari').value = tanggalLokalISO(awalBulan);
+        document.getElementById('poinSampai').value = tanggalLokalISO(now);
+      }
+    }
+    document.getElementById('btnHitungPoin').addEventListener('click', hitungTierPoin);
+
+    async function hitungTierPoin() {
+      const kelasId = document.getElementById('poinKelas').value;
+      const dari = document.getElementById('poinDari').value;
+      const sampai = document.getElementById('poinSampai').value;
+      const resultEl = document.getElementById('poinResult');
+      if (!kelasId) { resultEl.innerHTML = '<p class="empty-hint">Pilih kelas dahulu.</p>'; return; }
+      if (!dari || !sampai) { resultEl.innerHTML = '<p class="empty-hint">Pilih rentang tanggal dahulu.</p>'; return; }
+      if (dari > sampai) { resultEl.innerHTML = '<p class="empty-hint">Tanggal "Dari" tidak boleh setelah tanggal "Sampai".</p>'; return; }
+      resultEl.innerHTML = '<p class="loading">Menghitung…</p>';
+
+      const kelasNama = daftarKelas.find(k => k.id === kelasId)?.kelas || '-';
+      const { data: siswaKelas } = await db.from('siswa').select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+
+      const { data: jurnalPeriode } = await db.from('jurnal').select('id').eq('kelas_id', kelasId).is('dihapus_pada', null).gte('tanggal', dari).lte('tanggal', sampai);
+      const idJurnal = (jurnalPeriode || []).map(j => j.id);
+      const totalPertemuan = idJurnal.length;
+
+      let semuaAbsensi = [];
+      if (idJurnal.length) {
+        const { data } = await db.from('absensi').select('siswa_id, poin').in('jurnal_id', idJurnal);
+        semuaAbsensi = data || [];
+      }
+
+      renderTierPoin({ kelas: kelasNama, dari, sampai, totalPertemuan, siswa: siswaKelas || [], semuaAbsensi });
+    }
+
+    function tierDariRata(rata) {
+      if (rata >= 6) return 'emas';
+      if (rata >= 5) return 'perak';
+      if (rata >= 4) return 'perunggu';
+      return null;
+    }
+
+    function renderTierPoin(data) {
+      const resultEl = document.getElementById('poinResult');
+      if (!data.totalPertemuan) { resultEl.innerHTML = `<p class="empty-hint">Belum ada jurnal untuk ${escapeHtml(data.kelas)} pada rentang tanggal ini.</p>`; return; }
+      if (!data.siswa.length) { resultEl.innerHTML = '<p class="empty-hint">Belum ada siswa terdaftar untuk kelas ini.</p>'; return; }
+
+      const hasil = data.siswa.map(s => {
+        const punya = data.semuaAbsensi.filter(a => a.siswa_id === s.id);
+        const totalPoin = punya.reduce((t, a) => t + (a.poin ?? POIN_DEFAULT), 0) + (data.totalPertemuan - punya.length) * POIN_DEFAULT;
+        const rataPoin = Math.round((totalPoin / data.totalPertemuan) * 10) / 10;
+        return { nama: s.nama_siswa, rataPoin, tier: tierDariRata(rataPoin) };
+      });
+
+      const grup = { emas: [], perak: [], perunggu: [] };
+      hasil.forEach(h => { if (h.tier) grup[h.tier].push(h); });
+
+      const renderGrup = (key, label) => {
+        const list = grup[key].sort((a, b) => b.rataPoin - a.rataPoin);
+        if (!list.length) return '';
+        return `<p class="stat-section-title">${label} <span style="color:var(--muted); font-weight:500;">(${list.length} siswa)</span></p>` +
+          list.map((h, i) => `<div class="absen-list-item"><span class="rank">#${i+1}</span><span class="nama-kelas">${escapeHtml(h.nama)}</span><span class="total-badge poin-badge-up">${h.rataPoin}</span></div>`).join('');
+      };
+
+      const adaYangMasuk = grup.emas.length || grup.perak.length || grup.perunggu.length;
+      const belumMasuk = hasil.length - grup.emas.length - grup.perak.length - grup.perunggu.length;
+
+      resultEl.innerHTML =
+        `<p class="rekap-summary">${escapeHtml(data.kelas)} — ${data.dari} s/d ${data.sampai} · Total pertemuan: ${data.totalPertemuan} kali</p>` +
+        renderGrup('emas', '🥇 Istimewa (≥ 6,0)') +
+        renderGrup('perak', '🥈 Baik (5,0 – 5,9)') +
+        renderGrup('perunggu', '🥉 Cukup Menonjol (4,0 – 4,9)') +
+        (!adaYangMasuk
+          ? '<p class="empty-hint">Belum ada siswa yang memenuhi kriteria pada periode ini.</p>'
+          : `<p style="font-size:12.5px; color:var(--muted); margin:10px 0 0;">${belumMasuk} siswa lain belum memenuhi ambang batas kriteria pada periode ini.</p>`) +
+        `<div class="rekap-actions"><button type="button" class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button></div>`;
     }
 
     // ================== STATISTIK ==================
