@@ -887,6 +887,7 @@
     <button id="tab-catatan" onclick="showTab('catatan')">Catatan</button>
     <button id="tab-rekap" onclick="showTab('rekap')">Rekap</button>
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
+    <button id="tab-admin" onclick="showTab('admin')" style="display:none;">Admin</button>
   </nav>
 
   <main>
@@ -1286,6 +1287,18 @@
       <div id="statResult"></div>
     </section>
 
+    <!-- ===== TAB: ADMIN (khusus akun pemilik aplikasi) ===== -->
+    <section id="panel-admin" class="page" style="display:none;">
+      <p class="eyebrow">Khusus Admin</p>
+      <p class="tanggal-hari">Statistik Penggunaan Pengguna</p>
+      <p style="font-size:13px; color:var(--muted); margin:8px 0 14px;">
+        Menampilkan seberapa aktif tiap guru terdaftar menggunakan JMO, berdasarkan jumlah jurnal yang sudah pernah
+        diisi dan kapan terakhir kali aktif.
+      </p>
+      <button type="button" class="submit" id="btnRefreshAdmin">🔄 Muat / Perbarui Data</button>
+      <div id="adminResult"></div>
+    </section>
+
   </main>
 
   <button type="button" id="btnKeAtas" aria-label="Kembali ke atas">↑</button>
@@ -1302,6 +1315,7 @@
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let guruId = null;
+    const EMAIL_ADMIN = 'dimasmansaba@gmail.com';
     // ============================================================
 
     const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -1315,6 +1329,10 @@
       const { data: { session } } = await db.auth.getSession();
       if (!session) { window.location.href = "index.html"; return; }
       guruId = session.user.id;
+
+      if (session.user.email === EMAIL_ADMIN) {
+        document.getElementById('tab-admin').style.display = '';
+      }
 
       const { data: profil } = await db.from('profil_guru')
         .select('nama_lengkap, paket, tanggal_berakhir').eq('id', guruId).single();
@@ -1374,7 +1392,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['poin','petunjuk','setup','isi','riwayat','catatan','rekap','statistik'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','rekap','statistik','admin'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -1386,6 +1404,7 @@
       if (tab === 'statistik') initStatFilter();
       if (tab === 'poin') isiFilterPoinKelas();
       if (tab === 'setup') showSubtab(subtabAktif);
+      if (tab === 'admin') muatAdminStatistik();
     }
 
     let subtabAktif = 'kelas';
@@ -2512,6 +2531,56 @@
         ? '<p class="stat-section-title">Poin siswa</p><p class="empty-hint">Belum ada penyesuaian poin pada periode ini — semua siswa masih di poin default (3).</p>' : '';
 
       resultEl.innerHTML = cardsHtml + barsHtml + topHtml + poinTertinggiHtml + poinTerendahHtml + poinInfoKosong;
+    }
+
+    // ================== ADMIN (statistik penggunaan pengguna) ==================
+    document.getElementById('btnRefreshAdmin').addEventListener('click', muatAdminStatistik);
+
+    async function muatAdminStatistik() {
+      const resultEl = document.getElementById('adminResult');
+      resultEl.innerHTML = '<p class="loading">Memuat data…</p>';
+
+      const { data, error } = await db.rpc('get_statistik_pengguna_admin');
+
+      if (error) {
+        resultEl.innerHTML = `<p class="empty-hint">Gagal memuat data: ${escapeHtml(error.message)}</p>`;
+        return;
+      }
+      if (!data || !data.length) {
+        resultEl.innerHTML = '<p class="empty-hint">Belum ada guru terdaftar.</p>';
+        return;
+      }
+
+      const labelPaket = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' };
+
+      const baris = data.map(g => {
+        let status, warna;
+        if (!g.jumlah_jurnal) {
+          status = 'Belum Pernah Isi'; warna = 'var(--red)';
+        } else {
+          const hariLalu = g.tanggal_terakhir ? Math.floor((new Date() - new Date(g.tanggal_terakhir)) / 86400000) : null;
+          if (hariLalu !== null && hariLalu > 14) { status = `Tidak Aktif (${hariLalu}h)`; warna = 'var(--brick)'; }
+          else { status = 'Aktif'; warna = 'var(--accent)'; }
+        }
+        return `<tr>
+          <td>${escapeHtml(g.nama_lengkap || '-')}</td>
+          <td>${escapeHtml(g.email || '-')}</td>
+          <td>${labelPaket[g.paket] || g.paket || '-'}</td>
+          <td>${g.jumlah_jurnal ?? 0}</td>
+          <td>${g.tanggal_terakhir || '-'}</td>
+          <td><span style="color:${warna}; font-weight:600;">${status}</span></td>
+        </tr>`;
+      }).join('');
+
+      resultEl.innerHTML = `<div class="result-card">
+        <p class="rekap-summary">Total ${data.length} guru terdaftar · Diurutkan dari yang paling jarang aktif</p>
+        <div class="rekap-table-wrap">
+          <table class="rekap-table">
+            <thead><tr><th>Nama</th><th>Email</th><th>Paket</th><th>Jml Jurnal</th><th>Terakhir Isi</th><th>Status</th></tr></thead>
+            <tbody>${baris}</tbody>
+          </table>
+        </div>
+      </div>`;
     }
 
     // ================== MULAI ==================
