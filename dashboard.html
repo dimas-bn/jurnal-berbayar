@@ -2640,7 +2640,10 @@
       });
 
       listEl.innerHTML = Object.values(batch).map(b => {
-        const rataRata = Math.round((b.baris.reduce((t, r) => t + Number(r.nilai), 0) / b.baris.length) * 10) / 10;
+        const nilaiArr = b.baris.map(r => Number(r.nilai));
+        const rataRata = Math.round((nilaiArr.reduce((t, v) => t + v, 0) / nilaiArr.length) * 10) / 10;
+        const tertinggi = Math.max(...nilaiArr);
+        const terendah = Math.min(...nilaiArr);
         const chips = b.baris.sort((a, bb) => (a.siswa?.nomor_presensi || 0) - (bb.siswa?.nomor_presensi || 0)).map(r => {
           const kat = kategoriNilai(Number(r.nilai));
           return `<span style="display:inline-flex; align-items:center; gap:4px; background:#fff; border:1px solid var(--paper-line); border-radius:5px; padding:3px 8px; margin:0 5px 5px 0; font-size:12px;">
@@ -2650,15 +2653,23 @@
         }).join('');
         return `<div class="result-card" style="margin-bottom:10px;">
           <p class="rekap-summary">${escapeHtml(b.nama_penilaian)} — ${escapeHtml(b.kelas)}</p>
-          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">${b.tanggal} · ${b.baris.length} siswa dinilai · Rata-rata: <b>${rataRata}</b></p>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">${b.tanggal} · ${b.baris.length} siswa dinilai · Rata-rata: <b>${rataRata}</b> · Tertinggi: <b>${tertinggi}</b> · Terendah: <b>${terendah}</b></p>
           <div style="display:flex; flex-wrap:wrap;">${chips}</div>
           <div style="display:flex; gap:8px; margin-top:12px;">
-            <button type="button" class="entry-btn" onclick="editBatchNilai('${b.kelas_id}', ${JSON.stringify(b.nama_penilaian)}, '${b.tanggal}')">✏️ Edit</button>
-            <button type="button" class="entry-btn danger" onclick="hapusBatchNilai('${b.kelas_id}', ${JSON.stringify(b.nama_penilaian)}, '${b.tanggal}')">🗑️ Hapus</button>
+            <button type="button" class="entry-btn" data-aksi="edit" data-kelas-id="${b.kelas_id}" data-nama="${escapeHtml(b.nama_penilaian)}" data-tanggal="${b.tanggal}">✏️ Edit</button>
+            <button type="button" class="entry-btn danger" data-aksi="hapus" data-kelas-id="${b.kelas_id}" data-nama="${escapeHtml(b.nama_penilaian)}" data-tanggal="${b.tanggal}">🗑️ Hapus</button>
           </div>
         </div>`;
       }).join('');
     }
+
+    document.getElementById('riwayatNilaiList').addEventListener('click', function(e) {
+      const btn = e.target.closest('button[data-aksi]');
+      if (!btn) return;
+      const { aksi, kelasId, nama, tanggal } = btn.dataset;
+      if (aksi === 'edit') editBatchNilai(kelasId, nama, tanggal);
+      if (aksi === 'hapus') hapusBatchNilai(kelasId, nama, tanggal);
+    });
 
     async function editBatchNilai(kelasId, namaPenilaian, tanggal) {
       editingNilaiBatch = { kelas_id: kelasId, nama_penilaian: namaPenilaian, tanggal };
