@@ -1274,6 +1274,7 @@
       </div>
 
       <label style="margin-top:16px;">Nilai per siswa</label>
+      <p id="nilaiCounterInfo" style="font-size:12px; color:var(--muted); margin:0 0 8px; display:none;"></p>
       <div class="siswa-list" id="nilaiSiswaList">
         <p class="empty-hint">Pilih kelas dahulu untuk memuat daftar siswa.</p>
       </div>
@@ -2419,6 +2420,22 @@
         inp.style.color = '#fff';
         inp.title = kat.label;
       });
+
+      const semuaInput = document.querySelectorAll('#nilaiSiswaList .nilai-input');
+      const belum = document.querySelectorAll('#nilaiSiswaList .nilai-input').length
+        ? Array.from(semuaInput).filter(i => i.value === '').length : 0;
+      const counterEl = document.getElementById('nilaiCounterInfo');
+      if (semuaInput.length && belum > 0) {
+        counterEl.textContent = `⚠️ ${belum} dari ${semuaInput.length} siswa belum diisi nilainya.`;
+        counterEl.style.color = 'var(--red)';
+        counterEl.style.display = 'block';
+      } else if (semuaInput.length) {
+        counterEl.textContent = `✔️ Semua ${semuaInput.length} siswa sudah diisi.`;
+        counterEl.style.color = 'var(--accent-dark)';
+        counterEl.style.display = 'block';
+      } else {
+        counterEl.style.display = 'none';
+      }
     }
 
     document.getElementById('nilaiKelas').addEventListener('change', async function() {
@@ -2576,6 +2593,7 @@
       if (!tanggal) { alert('Mohon isi tanggal.'); return; }
 
       const baris = [];
+      const belumDiisi = [];
       document.querySelectorAll('#nilaiSiswaList .siswa-item').forEach(item => {
         const inp = item.querySelector('.nilai-input');
         if (inp.value !== '') {
@@ -2588,10 +2606,18 @@
             nilai: Number(inp.value),
             tanggal
           });
+        } else {
+          belumDiisi.push(item.dataset.nama);
         }
       });
 
       if (!baris.length) { alert('Isi nilai minimal 1 siswa terlebih dahulu.'); return; }
+
+      if (belumDiisi.length) {
+        const daftar = belumDiisi.length <= 8 ? belumDiisi.join(', ') : belumDiisi.slice(0, 8).join(', ') + `, dan ${belumDiisi.length - 8} lainnya`;
+        const lanjut = confirm(`⚠️ ${belumDiisi.length} siswa belum diisi nilainya:\n${daftar}\n\nTetap simpan nilai untuk ${baris.length} siswa yang sudah diisi?`);
+        if (!lanjut) return;
+      }
 
       // Kalau sedang edit, hapus dulu batch lama (kelas+nama+tanggal lama) sebelum insert baru
       if (editingNilaiBatch) {
