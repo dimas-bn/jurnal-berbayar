@@ -885,6 +885,7 @@
     <button id="tab-isi" class="active" onclick="showTab('isi')">Isi Jurnal</button>
     <button id="tab-riwayat" onclick="showTab('riwayat')">Riwayat</button>
     <button id="tab-catatan" onclick="showTab('catatan')">Catatan</button>
+    <button id="tab-nilai" onclick="showTab('nilai')">Nilai</button>
     <button id="tab-rekap" onclick="showTab('rekap')">Rekap</button>
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
     <button id="tab-admin" onclick="showTab('admin')" style="display:none;">Admin</button>
@@ -1212,6 +1213,56 @@
       <div id="catatanListSemua"><p class="loading">Memuat catatan…</p></div>
     </section>
 
+    <!-- ===== TAB: NILAI SISWA ===== -->
+    <section id="panel-nilai" class="page" style="display:none;">
+      <p class="eyebrow">Penilaian</p>
+      <p class="tanggal-hari">Nilai Siswa</p>
+
+      <button type="button" class="subtab-btn" id="btnToggleKKM" onclick="toggleKKM()" style="width:100%; margin-bottom:14px;">⚙️ Pengaturan Ambang Batas KKM</button>
+
+      <div id="boxKKM" style="display:none; margin-bottom:20px; background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px;">
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">
+          Atur sendiri ambang batas nilai sesuai standar KKM sekolah Anda. Nilai akan otomatis diberi warna berdasarkan 3 angka ini.
+        </p>
+        <label for="kkmJeblok" style="margin-top:0;">Batas Jeblok <span style="font-weight:400;color:var(--muted);">(di bawah ini = merah)</span></label>
+        <input type="number" id="kkmJeblok" min="0" max="100" placeholder="mis. 50">
+        <label for="kkmKKM">Nilai KKM <span style="font-weight:400;color:var(--muted);">(di bawah ini = kuning, di atas = hijau)</span></label>
+        <input type="number" id="kkmKKM" min="0" max="100" placeholder="mis. 75">
+        <label for="kkmIstimewa">Batas Istimewa <span style="font-weight:400;color:var(--muted);">(di atas ini = biru)</span></label>
+        <input type="number" id="kkmIstimewa" min="0" max="100" placeholder="mis. 90">
+        <div style="display:flex; gap:6px; margin:14px 0;">
+          <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--red); color:#fff;">Jeblok</span>
+          <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--amber); color:#fff;">Belum KKM</span>
+          <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--accent); color:#fff;">Sudah KKM</span>
+          <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--slate); color:#fff;">Istimewa</span>
+        </div>
+        <button class="btn-tambah" onclick="simpanPengaturanKKM()" style="width:100%;">💾 Simpan Pengaturan</button>
+        <p id="kkmSaveMsg" style="font-size:12px; margin:8px 0 0; display:none;"></p>
+      </div>
+
+      <p class="stat-section-title" style="margin-top:4px;">Input Nilai Ulangan/Ujian</p>
+
+      <label for="nilaiKelas">Kelas</label>
+      <select id="nilaiKelas"><option value="">Pilih kelas…</option></select>
+
+      <label for="namaPenilaianInput">Nama Penilaian <span style="font-weight:400;color:var(--muted);">(mis. Ulangan Harian Bab 3)</span></label>
+      <input type="text" id="namaPenilaianInput" placeholder="Nama ulangan/ujian & materinya">
+
+      <label for="tanggalNilai">Tanggal</label>
+      <input type="date" id="tanggalNilai">
+
+      <label style="margin-top:16px;">Nilai per siswa</label>
+      <div class="siswa-list" id="nilaiSiswaList">
+        <p class="empty-hint">Pilih kelas dahulu untuk memuat daftar siswa.</p>
+      </div>
+
+      <button type="button" class="submit" id="btnSimpanNilaiSekelas" style="margin-top:18px; display:none;">💾 Simpan Nilai Sekelas</button>
+      <button type="button" id="btnBatalEditNilai" class="entry-btn" style="display:none; margin-top:8px;">Batal edit</button>
+
+      <p class="stat-section-title" style="margin-top:26px;">Riwayat Penilaian</p>
+      <div id="riwayatNilaiList"><p class="loading">Memuat riwayat…</p></div>
+    </section>
+
     <!-- ===== TAB: REKAP BULANAN ===== -->
     <section id="panel-rekap" class="page" style="display:none;">
       <p class="eyebrow">Laporan kehadiran</p>
@@ -1392,7 +1443,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['poin','petunjuk','setup','isi','riwayat','catatan','rekap','statistik','admin'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -1400,6 +1451,11 @@
       document.getElementById('btnKeAtas').classList.toggle('geser-atas', tab === 'isi');
       if (tab === 'riwayat') muatRiwayat();
       if (tab === 'catatan') muatCatatanSemua();
+      if (tab === 'nilai') {
+        muatPengaturanKKM(); muatRiwayatNilai();
+        const tglNilai = document.getElementById('tanggalNilai');
+        if (!tglNilai.value) tglNilai.value = tanggalLokalISO(new Date());
+      }
       if (tab === 'rekap') isiFilterRekapKelas();
       if (tab === 'statistik') initStatFilter();
       if (tab === 'poin') isiFilterPoinKelas();
@@ -1470,7 +1526,7 @@
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
       daftarKelas = (data || []).map(k => ({ id: k.id, kelas: k.nama_kelas, mapel: k.mata_pelajaran }));
       const opsi = '<option value="">Pilih kelas…</option>' + daftarKelas.map(k => `<option value="${k.id}">${escapeHtml(k.kelas)}</option>`).join('');
-      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas'].forEach(id => {
+      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas','nilaiKelas'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = opsi;
       });
@@ -2275,6 +2331,235 @@
     document.getElementById('linkExportExcel').addEventListener('click', function(e) {
       if (this.classList.contains('disabled') || !this.href || this.href.endsWith('#')) { e.preventDefault(); exportSemuaData(); }
     });
+
+    // ================== NILAI SISWA ==================
+    let kkmSetting = { batas_jeblok: 50, nilai_kkm: 75, batas_istimewa: 90 };
+    let editingNilaiBatch = null; // { kelas_id, nama_penilaian, tanggal } saat mode edit
+
+    function toggleKKM() {
+      const box = document.getElementById('boxKKM');
+      box.style.display = (box.style.display === 'none') ? 'block' : 'none';
+    }
+
+    async function muatPengaturanKKM() {
+      const { data } = await db.from('profil_guru')
+        .select('batas_jeblok, nilai_kkm, batas_istimewa').eq('id', guruId).single();
+      if (data) {
+        kkmSetting = { batas_jeblok: data.batas_jeblok, nilai_kkm: data.nilai_kkm, batas_istimewa: data.batas_istimewa };
+      }
+      document.getElementById('kkmJeblok').value = kkmSetting.batas_jeblok;
+      document.getElementById('kkmKKM').value = kkmSetting.nilai_kkm;
+      document.getElementById('kkmIstimewa').value = kkmSetting.batas_istimewa;
+    }
+
+    async function simpanPengaturanKKM() {
+      const jeblok = Number(document.getElementById('kkmJeblok').value);
+      const kkm = Number(document.getElementById('kkmKKM').value);
+      const istimewa = Number(document.getElementById('kkmIstimewa').value);
+      const msgEl = document.getElementById('kkmSaveMsg');
+
+      if (!(jeblok < kkm && kkm < istimewa)) {
+        msgEl.textContent = '⚠️ Urutan harus: Batas Jeblok < Nilai KKM < Batas Istimewa.';
+        msgEl.style.color = 'var(--red)';
+        msgEl.style.display = 'block';
+        return;
+      }
+
+      const { error } = await db.from('profil_guru')
+        .update({ batas_jeblok: jeblok, nilai_kkm: kkm, batas_istimewa: istimewa }).eq('id', guruId);
+
+      if (error) {
+        msgEl.textContent = 'Gagal menyimpan: ' + error.message;
+        msgEl.style.color = 'var(--red)';
+      } else {
+        kkmSetting = { batas_jeblok: jeblok, nilai_kkm: kkm, batas_istimewa: istimewa };
+        msgEl.textContent = '✔️ Pengaturan tersimpan.';
+        msgEl.style.color = 'var(--accent)';
+        renderWarnaNilaiTerkini();
+        muatRiwayatNilai();
+      }
+      msgEl.style.display = 'block';
+    }
+
+    function kategoriNilai(v) {
+      if (v < kkmSetting.batas_jeblok) return { label: 'Jeblok', warna: 'var(--red)' };
+      if (v < kkmSetting.nilai_kkm) return { label: 'Belum KKM', warna: 'var(--amber)' };
+      if (v <= kkmSetting.batas_istimewa) return { label: 'Sudah KKM', warna: 'var(--accent)' };
+      return { label: 'Istimewa', warna: 'var(--slate)' };
+    }
+
+    function renderWarnaNilaiTerkini() {
+      document.querySelectorAll('#nilaiSiswaList .nilai-input').forEach(inp => {
+        if (inp.value === '') { inp.style.background = '#fff'; inp.style.color = 'var(--ink)'; inp.title = ''; return; }
+        const v = Number(inp.value);
+        const kat = kategoriNilai(v);
+        inp.style.background = kat.warna;
+        inp.style.color = '#fff';
+        inp.title = kat.label;
+      });
+    }
+
+    document.getElementById('nilaiKelas').addEventListener('change', async function() {
+      const kelasId = this.value;
+      const listEl = document.getElementById('nilaiSiswaList');
+      const btnSimpan = document.getElementById('btnSimpanNilaiSekelas');
+      if (!kelasId) {
+        listEl.innerHTML = '<p class="empty-hint">Pilih kelas dahulu untuk memuat daftar siswa.</p>';
+        btnSimpan.style.display = 'none';
+        return;
+      }
+      listEl.innerHTML = '<p class="loading">Memuat siswa…</p>';
+      const { data: siswa } = await db.from('siswa').select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+      renderNilaiSiswa(siswa || [], {});
+      btnSimpan.style.display = (siswa && siswa.length) ? 'block' : 'none';
+    });
+
+    function renderNilaiSiswa(siswa, nilaiTersimpan) {
+      const listEl = document.getElementById('nilaiSiswaList');
+      if (!siswa.length) { listEl.innerHTML = '<p class="empty-hint">Belum ada siswa di kelas ini. Tambahkan dulu lewat tab Setup.</p>'; return; }
+
+      listEl.innerHTML = siswa.map(s => {
+        const nilaiAwal = nilaiTersimpan[s.id] !== undefined ? nilaiTersimpan[s.id] : '';
+        return `<div class="siswa-item" data-siswa-id="${s.id}" data-nama="${escapeHtml(s.nama_siswa)}" style="display:flex; align-items:center; gap:10px; justify-content:space-between;">
+          <div class="nama" style="flex:1;">${s.nomor_presensi ? s.nomor_presensi + '. ' : ''}${escapeHtml(s.nama_siswa)}</div>
+          <input type="number" class="nilai-input" min="0" max="100" placeholder="0-100" value="${nilaiAwal}"
+            style="width:80px; text-align:center; font-weight:600; border-radius:6px; flex:none;">
+        </div>`;
+      }).join('');
+
+      listEl.querySelectorAll('.nilai-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+          if (inp.value !== '') inp.value = Math.max(0, Math.min(100, Number(inp.value)));
+          renderWarnaNilaiTerkini();
+        });
+      });
+      renderWarnaNilaiTerkini();
+    }
+
+    document.getElementById('btnSimpanNilaiSekelas').addEventListener('click', simpanNilaiSekelas);
+    document.getElementById('btnBatalEditNilai').addEventListener('click', batalEditNilai);
+
+    async function simpanNilaiSekelas() {
+      const kelasId = document.getElementById('nilaiKelas').value;
+      const namaPenilaian = document.getElementById('namaPenilaianInput').value.trim();
+      const tanggal = document.getElementById('tanggalNilai').value;
+
+      if (!kelasId) { alert('Pilih kelas terlebih dahulu.'); return; }
+      if (!namaPenilaian) { alert('Mohon isi nama penilaian, mis. "Ulangan Harian Bab 3".'); return; }
+      if (!tanggal) { alert('Mohon isi tanggal.'); return; }
+
+      const baris = [];
+      document.querySelectorAll('#nilaiSiswaList .siswa-item').forEach(item => {
+        const inp = item.querySelector('.nilai-input');
+        if (inp.value !== '') {
+          baris.push({
+            guru_id: guruId,
+            kelas_id: kelasId,
+            siswa_id: item.dataset.siswaId,
+            jenis: 'ulangan',
+            nama_penilaian: namaPenilaian,
+            nilai: Number(inp.value),
+            tanggal
+          });
+        }
+      });
+
+      if (!baris.length) { alert('Isi nilai minimal 1 siswa terlebih dahulu.'); return; }
+
+      // Kalau sedang edit, hapus dulu batch lama (kelas+nama+tanggal lama) sebelum insert baru
+      if (editingNilaiBatch) {
+        await db.from('nilai').delete()
+          .eq('guru_id', guruId)
+          .eq('kelas_id', editingNilaiBatch.kelas_id)
+          .eq('nama_penilaian', editingNilaiBatch.nama_penilaian)
+          .eq('tanggal', editingNilaiBatch.tanggal);
+      }
+
+      const { error } = await db.from('nilai').insert(baris);
+      if (error) { alert('Gagal menyimpan: ' + error.message); return; }
+
+      batalEditNilai();
+      document.getElementById('namaPenilaianInput').value = '';
+      document.getElementById('nilaiKelas').value = '';
+      document.getElementById('nilaiSiswaList').innerHTML = '<p class="empty-hint">Pilih kelas dahulu untuk memuat daftar siswa.</p>';
+      document.getElementById('btnSimpanNilaiSekelas').style.display = 'none';
+      muatRiwayatNilai();
+      alert('Nilai berhasil disimpan.');
+    }
+
+    function batalEditNilai() {
+      editingNilaiBatch = null;
+      document.getElementById('btnBatalEditNilai').style.display = 'none';
+      document.getElementById('btnSimpanNilaiSekelas').textContent = '💾 Simpan Nilai Sekelas';
+    }
+
+    async function muatRiwayatNilai() {
+      const listEl = document.getElementById('riwayatNilaiList');
+      listEl.innerHTML = '<p class="loading">Memuat riwayat…</p>';
+
+      const { data, error } = await db.from('nilai')
+        .select('id, kelas_id, siswa_id, nama_penilaian, nilai, tanggal, kelas:kelas_id (nama_kelas), siswa:siswa_id (nama_siswa, nomor_presensi)')
+        .eq('guru_id', guruId).order('tanggal', { ascending: false });
+
+      if (error) { listEl.innerHTML = `<p class="empty-hint">Gagal memuat: ${escapeHtml(error.message)}</p>`; return; }
+      if (!data || !data.length) { listEl.innerHTML = '<p class="empty-hint">Belum ada nilai yang tercatat.</p>'; return; }
+
+      // Kelompokkan per batch: kelas_id + nama_penilaian + tanggal
+      const batch = {};
+      data.forEach(row => {
+        const key = row.kelas_id + '||' + row.nama_penilaian + '||' + row.tanggal;
+        if (!batch[key]) batch[key] = { kelas_id: row.kelas_id, kelas: row.kelas?.nama_kelas || '-', nama_penilaian: row.nama_penilaian, tanggal: row.tanggal, baris: [] };
+        batch[key].baris.push(row);
+      });
+
+      listEl.innerHTML = Object.values(batch).map(b => {
+        const rataRata = Math.round((b.baris.reduce((t, r) => t + Number(r.nilai), 0) / b.baris.length) * 10) / 10;
+        const chips = b.baris.sort((a, bb) => (a.siswa?.nomor_presensi || 0) - (bb.siswa?.nomor_presensi || 0)).map(r => {
+          const kat = kategoriNilai(Number(r.nilai));
+          return `<span style="display:inline-flex; align-items:center; gap:4px; background:#fff; border:1px solid var(--paper-line); border-radius:5px; padding:3px 8px; margin:0 5px 5px 0; font-size:12px;">
+            ${escapeHtml(r.siswa?.nama_siswa || '-')}
+            <b style="background:${kat.warna}; color:#fff; border-radius:3px; padding:1px 6px;">${r.nilai}</b>
+          </span>`;
+        }).join('');
+        return `<div class="result-card" style="margin-bottom:10px;">
+          <p class="rekap-summary">${escapeHtml(b.nama_penilaian)} — ${escapeHtml(b.kelas)}</p>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">${b.tanggal} · ${b.baris.length} siswa dinilai · Rata-rata: <b>${rataRata}</b></p>
+          <div style="display:flex; flex-wrap:wrap;">${chips}</div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button type="button" class="entry-btn" onclick="editBatchNilai('${b.kelas_id}', ${JSON.stringify(b.nama_penilaian)}, '${b.tanggal}')">✏️ Edit</button>
+            <button type="button" class="entry-btn danger" onclick="hapusBatchNilai('${b.kelas_id}', ${JSON.stringify(b.nama_penilaian)}, '${b.tanggal}')">🗑️ Hapus</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function editBatchNilai(kelasId, namaPenilaian, tanggal) {
+      editingNilaiBatch = { kelas_id: kelasId, nama_penilaian: namaPenilaian, tanggal };
+      document.getElementById('nilaiKelas').value = kelasId;
+      document.getElementById('namaPenilaianInput').value = namaPenilaian;
+      document.getElementById('tanggalNilai').value = tanggal;
+      document.getElementById('btnBatalEditNilai').style.display = 'inline-block';
+      document.getElementById('btnSimpanNilaiSekelas').textContent = '💾 Simpan Perubahan';
+
+      const { data: siswa } = await db.from('siswa').select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+      const { data: nilaiRows } = await db.from('nilai').select('siswa_id, nilai')
+        .eq('guru_id', guruId).eq('kelas_id', kelasId).eq('nama_penilaian', namaPenilaian).eq('tanggal', tanggal);
+
+      const nilaiTersimpan = {};
+      (nilaiRows || []).forEach(r => { nilaiTersimpan[r.siswa_id] = r.nilai; });
+
+      renderNilaiSiswa(siswa || [], nilaiTersimpan);
+      document.getElementById('btnSimpanNilaiSekelas').style.display = 'block';
+      document.getElementById('panel-nilai').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function hapusBatchNilai(kelasId, namaPenilaian, tanggal) {
+      if (!confirm(`Hapus semua nilai "${namaPenilaian}" untuk kelas ini? Tindakan ini tidak bisa dibatalkan.`)) return;
+      const { error } = await db.from('nilai').delete()
+        .eq('guru_id', guruId).eq('kelas_id', kelasId).eq('nama_penilaian', namaPenilaian).eq('tanggal', tanggal);
+      if (error) { alert('Gagal menghapus: ' + error.message); return; }
+      muatRiwayatNilai();
+    }
 
     // ================== REKAP BULANAN ==================
     function isiFilterRekapKelas() {
