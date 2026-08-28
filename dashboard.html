@@ -1283,6 +1283,20 @@
       <button type="button" id="btnBatalEditNilai" class="entry-btn" style="display:none; margin-top:8px;">Batal edit</button>
 
       <p class="stat-section-title" style="margin-top:26px;">Riwayat Penilaian</p>
+      <div class="filter-bar">
+        <select id="filterKelasNilai"><option value="">Semua kelas</option></select>
+        <div class="row2">
+          <div>
+            <label for="filterNilaiDari" style="font-size:11.5px;">Dari tanggal</label>
+            <input type="date" id="filterNilaiDari">
+          </div>
+          <div>
+            <label for="filterNilaiSampai" style="font-size:11.5px;">Sampai tanggal</label>
+            <input type="date" id="filterNilaiSampai">
+          </div>
+        </div>
+        <button type="button" id="btnResetFilterNilai" class="reset-filter">Reset filter</button>
+      </div>
       <div id="riwayatNilaiList"><p class="loading">Memuat riwayat…</p></div>
     </section>
 
@@ -1359,6 +1373,20 @@
       <button type="button" class="submit" id="btnTampilkanStat" style="margin-top:14px;">Tampilkan Statistik</button>
 
       <div id="statResult"></div>
+
+      <p class="stat-section-title" style="margin-top:28px;">📈 Progres Nilai per Siswa</p>
+      <div class="row2">
+        <div>
+          <label for="statNilaiKelas">Kelas</label>
+          <select id="statNilaiKelas"><option value="">Pilih kelas…</option></select>
+        </div>
+        <div>
+          <label for="statNilaiSiswa">Siswa</label>
+          <select id="statNilaiSiswa" disabled><option value="">Pilih kelas dahulu…</option></select>
+        </div>
+      </div>
+      <button type="button" class="submit" id="btnTampilkanProgresNilai" style="margin-top:14px;">Tampilkan Progres</button>
+      <div id="statProgresNilaiResult"></div>
     </section>
 
     <!-- ===== TAB: ADMIN (khusus akun pemilik aplikasi) ===== -->
@@ -1549,7 +1577,7 @@
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
       daftarKelas = (data || []).map(k => ({ id: k.id, kelas: k.nama_kelas, mapel: k.mata_pelajaran }));
       const opsi = '<option value="">Pilih kelas…</option>' + daftarKelas.map(k => `<option value="${k.id}">${escapeHtml(k.kelas)}</option>`).join('');
-      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas','nilaiKelas'].forEach(id => {
+      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas','nilaiKelas','statNilaiKelas'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = opsi;
       });
@@ -2646,6 +2674,8 @@
       document.getElementById('btnSimpanNilaiSekelas').textContent = '💾 Simpan Nilai Sekelas';
     }
 
+    let dataRiwayatNilaiSemua = [];
+
     async function muatRiwayatNilai() {
       const listEl = document.getElementById('riwayatNilaiList');
       listEl.innerHTML = '<p class="loading">Memuat riwayat…</p>';
@@ -2655,11 +2685,50 @@
         .eq('guru_id', guruId).order('tanggal', { ascending: false });
 
       if (error) { listEl.innerHTML = `<p class="empty-hint">Gagal memuat: ${escapeHtml(error.message)}</p>`; return; }
-      if (!data || !data.length) { listEl.innerHTML = '<p class="empty-hint">Belum ada nilai yang tercatat.</p>'; return; }
+
+      dataRiwayatNilaiSemua = data || [];
+      isiFilterKelasNilai();
+      renderRiwayatNilaiTerfilter();
+    }
+
+    function isiFilterKelasNilai() {
+      const sel = document.getElementById('filterKelasNilai');
+      const nilaiTerpilih = sel.value;
+      const kelasUnik = [];
+      const idSudahAda = new Set();
+      dataRiwayatNilaiSemua.forEach(r => {
+        if (r.kelas_id && !idSudahAda.has(r.kelas_id)) {
+          idSudahAda.add(r.kelas_id);
+          kelasUnik.push({ id: r.kelas_id, nama: r.kelas?.nama_kelas || '-' });
+        }
+      });
+      sel.innerHTML = '<option value="">Semua kelas</option>' + kelasUnik.map(k => `<option value="${k.id}">${escapeHtml(k.nama)}</option>`).join('');
+      sel.value = nilaiTerpilih;
+    }
+
+    function renderRiwayatNilaiTerfilter() {
+      const listEl = document.getElementById('riwayatNilaiList');
+      const kelasFilter = document.getElementById('filterKelasNilai').value;
+      const dariFilter = document.getElementById('filterNilaiDari').value;
+      const sampaiFilter = document.getElementById('filterNilaiSampai').value;
+
+      const dataTersaring = dataRiwayatNilaiSemua.filter(r => {
+        if (kelasFilter && r.kelas_id !== kelasFilter) return false;
+        if (dariFilter && r.tanggal < dariFilter) return false;
+        if (sampaiFilter && r.tanggal > sampaiFilter) return false;
+        return true;
+      });
+
+      if (!dataTersaring.length) {
+        listEl.innerHTML = dataRiwayatNilaiSemua.length
+          ? '<p class="empty-hint">Tidak ada nilai yang cocok dengan filter ini.</p>'
+          : '<p class="empty-hint">Belum ada nilai yang tercatat.</p>';
+        return;
+      }
 
       // Kelompokkan per batch: kelas_id + nama_penilaian + tanggal
       const batch = {};
-      data.forEach(row => {
+      dataTersaring.forEach(row => {
         const key = row.kelas_id + '||' + row.nama_penilaian + '||' + row.tanggal;
         if (!batch[key]) batch[key] = { kelas_id: row.kelas_id, kelas: row.kelas?.nama_kelas || '-', nama_penilaian: row.nama_penilaian, tanggal: row.tanggal, baris: [] };
         batch[key].baris.push(row);
@@ -2688,6 +2757,16 @@
         </div>`;
       }).join('');
     }
+
+    document.getElementById('filterKelasNilai').addEventListener('change', renderRiwayatNilaiTerfilter);
+    document.getElementById('filterNilaiDari').addEventListener('change', renderRiwayatNilaiTerfilter);
+    document.getElementById('filterNilaiSampai').addEventListener('change', renderRiwayatNilaiTerfilter);
+    document.getElementById('btnResetFilterNilai').addEventListener('click', () => {
+      document.getElementById('filterKelasNilai').value = '';
+      document.getElementById('filterNilaiDari').value = '';
+      document.getElementById('filterNilaiSampai').value = '';
+      renderRiwayatNilaiTerfilter();
+    });
 
     document.getElementById('riwayatNilaiList').addEventListener('click', function(e) {
       const btn = e.target.closest('button[data-aksi]');
@@ -2980,6 +3059,78 @@
         ? '<p class="stat-section-title">Poin siswa</p><p class="empty-hint">Belum ada penyesuaian poin pada periode ini — semua siswa masih di poin default (3).</p>' : '';
 
       resultEl.innerHTML = cardsHtml + barsHtml + topHtml + poinTertinggiHtml + poinTerendahHtml + poinInfoKosong;
+    }
+
+    // ================== STATISTIK: PROGRES NILAI PER SISWA ==================
+    document.getElementById('statNilaiKelas').addEventListener('change', async function() {
+      const kelasId = this.value;
+      const selSiswa = document.getElementById('statNilaiSiswa');
+      document.getElementById('statProgresNilaiResult').innerHTML = '';
+      if (!kelasId) {
+        selSiswa.innerHTML = '<option value="">Pilih kelas dahulu…</option>';
+        selSiswa.disabled = true;
+        return;
+      }
+      selSiswa.innerHTML = '<option value="">Memuat…</option>';
+      const { data: siswa } = await db.from('siswa').select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
+      selSiswa.innerHTML = '<option value="">Pilih siswa…</option>' + (siswa || []).map(s =>
+        `<option value="${s.id}">${s.nomor_presensi ? s.nomor_presensi + '. ' : ''}${escapeHtml(s.nama_siswa)}</option>`).join('');
+      selSiswa.disabled = false;
+    });
+
+    document.getElementById('btnTampilkanProgresNilai').addEventListener('click', async function() {
+      const siswaId = document.getElementById('statNilaiSiswa').value;
+      const resultEl = document.getElementById('statProgresNilaiResult');
+      if (!siswaId) { alert('Pilih siswa terlebih dahulu.'); return; }
+
+      resultEl.innerHTML = '<p class="loading">Memuat progres nilai…</p>';
+      await muatPengaturanKKM(); // pastikan warna sesuai pengaturan KKM terbaru
+
+      const { data, error } = await db.from('nilai')
+        .select('nama_penilaian, nilai, tanggal')
+        .eq('siswa_id', siswaId).order('tanggal', { ascending: true });
+
+      if (error) { resultEl.innerHTML = `<p class="empty-hint">Gagal memuat: ${escapeHtml(error.message)}</p>`; return; }
+      if (!data || !data.length) { resultEl.innerHTML = '<p class="empty-hint">Siswa ini belum punya catatan nilai.</p>'; return; }
+
+      const rataRata = Math.round((data.reduce((t, r) => t + Number(r.nilai), 0) / data.length) * 10) / 10;
+      const nilaiArr = data.map(r => Number(r.nilai));
+      const tertinggi = Math.max(...nilaiArr);
+      const terendah = Math.min(...nilaiArr);
+
+      resultEl.innerHTML = `
+        <div class="row2" style="margin-top:14px;">
+          <div class="stat-card"><div class="stat-num">${rataRata}</div><div class="stat-label">Rata-rata</div></div>
+          <div class="stat-card"><div class="stat-num">${tertinggi}</div><div class="stat-label">Tertinggi</div></div>
+        </div>
+        <div class="row2">
+          <div class="stat-card"><div class="stat-num">${terendah}</div><div class="stat-label">Terendah</div></div>
+          <div class="stat-card"><div class="stat-num">${data.length}</div><div class="stat-label">Kali dinilai</div></div>
+        </div>
+        <div style="margin-top:14px;">${buatGrafikTrenNilai(data)}</div>
+        <p class="stat-section-title" style="margin-top:18px;">Rincian</p>
+        ${data.slice().reverse().map(r => {
+          const kat = kategoriNilai(Number(r.nilai));
+          return `<div class="absen-list-item"><span class="nama-kelas">${escapeHtml(r.nama_penilaian)}<br><span class="kelas-kecil">${r.tanggal}</span></span><span class="total-badge" style="background:${kat.warna};">${r.nilai}</span></div>`;
+        }).join('')}
+      `;
+    });
+
+    function buatGrafikTrenNilai(data) {
+      const w = 320, h = 130, padX = 10, padY = 14;
+      const n = data.length;
+      const stepX = n > 1 ? (w - padX * 2) / (n - 1) : 0;
+      const yPos = v => h - padY - (v / 100) * (h - padY * 2);
+
+      const pts = data.map((r, i) => `${padX + i * stepX},${yPos(Number(r.nilai))}`).join(' ');
+      const dots = data.map((r, i) => {
+        const kat = kategoriNilai(Number(r.nilai));
+        return `<circle cx="${padX + i * stepX}" cy="${yPos(Number(r.nilai))}" r="4" fill="${kat.warna}" stroke="#fff" stroke-width="1.5" />`;
+      }).join('');
+      return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto; background:#fff; border:1px solid var(--paper-line); border-radius:8px;">
+        <polyline points="${pts}" fill="none" stroke="#8a8f9c" stroke-width="2" />
+        ${dots}
+      </svg>`;
     }
 
     // ================== ADMIN (statistik penggunaan pengguna) ==================
