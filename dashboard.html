@@ -2873,7 +2873,10 @@
         semuaAbsensi = data || [];
       }
 
-      renderRekap({ kelas: kelasNama, bulan, tahun, totalPertemuan, siswa: siswaKelas || [], semuaAbsensi });
+      const { data: nilaiBulanIni } = await db.from('nilai').select('siswa_id, nilai')
+        .eq('kelas_id', kelasId).gte('tanggal', tglAwal).lte('tanggal', tglAkhir);
+
+      renderRekap({ kelas: kelasNama, bulan, tahun, totalPertemuan, siswa: siswaKelas || [], semuaAbsensi, semuaNilai: nilaiBulanIni || [] });
     }
 
     function renderRekap(data) {
@@ -2890,13 +2893,17 @@
         const persenHadir = data.totalPertemuan ? Math.round((hadir / data.totalPertemuan) * 100) : 0;
         const totalPoin = punya.reduce((t, a) => t + (a.poin ?? POIN_DEFAULT), 0) + (data.totalPertemuan - punya.length) * POIN_DEFAULT;
         const rataPoin = data.totalPertemuan ? Math.round((totalPoin / data.totalPertemuan) * 10) / 10 : 0;
-        return `<tr><td>${s.nomor_presensi || (i+1)}</td><td>${escapeHtml(s.nama_siswa)}</td><td>${hadir}</td><td>${hitung('Izin')}</td><td>${hitung('Sakit')}</td><td>${hitung('Dispensasi')}</td><td>${hitung('Alpa')}</td><td>${persenHadir}%</td><td>${rataPoin}</td></tr>`;
+        const nilaiSiswa = data.semuaNilai.filter(n => n.siswa_id === s.id);
+        const rataNilai = nilaiSiswa.length ? Math.round((nilaiSiswa.reduce((t, n) => t + Number(n.nilai), 0) / nilaiSiswa.length) * 10) / 10 : null;
+        const selNilai = rataNilai === null ? '-' : rataNilai;
+        return `<tr><td>${s.nomor_presensi || (i+1)}</td><td>${escapeHtml(s.nama_siswa)}</td><td>${hadir}</td><td>${hitung('Izin')}</td><td>${hitung('Sakit')}</td><td>${hitung('Dispensasi')}</td><td>${hitung('Alpa')}</td><td>${persenHadir}%</td><td>${rataPoin}</td><td>${selNilai}</td></tr>`;
       }).join('');
 
       resultEl.innerHTML =
         `<div class="result-card">
         <p class="rekap-summary">${escapeHtml(data.kelas)} — ${namaBulan} ${data.tahun} · Total pertemuan: ${data.totalPertemuan} kali</p>
-        <div class="rekap-table-wrap"><table class="rekap-table"><thead><tr><th>No</th><th>Nama</th><th>H</th><th>I</th><th>S</th><th>D</th><th>A</th><th>% Hadir</th><th>Rata² Poin</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="rekap-table-wrap"><table class="rekap-table"><thead><tr><th>No</th><th>Nama</th><th>H</th><th>I</th><th>S</th><th>D</th><th>A</th><th>% Hadir</th><th>Rata² Poin</th><th>Rata² Nilai</th></tr></thead><tbody>${rows}</tbody></table></div>
+        ${!data.semuaNilai.length ? '<p style="font-size:12px; color:var(--muted); margin:10px 0 0;">Belum ada nilai tercatat untuk kelas ini di bulan tersebut.</p>' : ''}
         <div class="rekap-actions"><button type="button" class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button></div>
         </div>`;
     }
