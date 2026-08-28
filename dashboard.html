@@ -1686,16 +1686,46 @@
       muatSiswa();
     }
 
+    let editingSiswaId = null;
+
     async function muatSiswa() {
       const kelasId = document.getElementById('kelasUntukSiswa').value;
       const wadah = document.getElementById('listSiswa');
       if (!kelasId) { wadah.innerHTML = ''; document.getElementById('siswaKosong').style.display = 'block'; return; }
       const { data } = await db.from('siswa').select('id, nama_siswa, nomor_presensi').eq('kelas_id', kelasId).order('nomor_presensi');
       document.getElementById('siswaKosong').style.display = (!data || !data.length) ? 'block' : 'none';
-      wadah.innerHTML = (data || []).map(s =>
-        `<div class="setup-list-item"><span>${s.nomor_presensi ?? '-'}. ${escapeHtml(s.nama_siswa)}</span>
-         <button type="button" class="entry-btn danger" onclick="hapusSiswa('${s.id}')">Hapus</button></div>`
-      ).join('');
+      wadah.innerHTML = (data || []).map(s => {
+        if (editingSiswaId === s.id) {
+          return `<div class="setup-list-item" style="flex-wrap:wrap; gap:8px;">
+            <input type="text" id="editNo-${s.id}" value="${s.nomor_presensi ?? ''}" placeholder="No." style="max-width:60px; flex:none;">
+            <input type="text" id="editNama-${s.id}" value="${escapeHtml(s.nama_siswa)}" style="flex:1; min-width:120px;">
+            <div style="display:flex; gap:6px; width:100%;">
+              <button type="button" class="btn-tambah" onclick="editSiswaSimpan('${s.id}')" style="flex:1;">Simpan</button>
+              <button type="button" class="entry-btn" onclick="editSiswaBatal()" style="flex:1;">Batal</button>
+            </div>
+          </div>`;
+        }
+        return `<div class="setup-list-item"><span>${s.nomor_presensi ?? '-'}. ${escapeHtml(s.nama_siswa)}</span>
+         <div style="display:flex; gap:6px;">
+           <button type="button" class="entry-btn" onclick="editSiswaMulai('${s.id}')">Edit</button>
+           <button type="button" class="entry-btn danger" onclick="hapusSiswa('${s.id}')">Hapus</button>
+         </div></div>`;
+      }).join('');
+    }
+
+    function editSiswaMulai(id) { editingSiswaId = id; muatSiswa(); }
+    function editSiswaBatal() { editingSiswaId = null; muatSiswa(); }
+
+    async function editSiswaSimpan(id) {
+      const noEl = document.getElementById('editNo-' + id);
+      const namaEl = document.getElementById('editNama-' + id);
+      const nomor = noEl.value.trim();
+      const nama = namaEl.value.trim();
+      if (!nama) { alert('Nama tidak boleh kosong.'); return; }
+      const { error } = await db.from('siswa').update({ nama_siswa: nama, nomor_presensi: nomor ? parseInt(nomor) : null }).eq('id', id);
+      if (error) { alert('Gagal menyimpan: ' + error.message); return; }
+      editingSiswaId = null;
+      muatSiswa();
     }
 
     async function hapusSiswa(id) {
@@ -1717,15 +1747,44 @@
       muatJadwalSetup(); muatJadwalGlobal();
     }
 
+    const HARI_LIST = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+    let editingJadwalId = null;
+
     async function muatJadwalSetup() {
       const { data } = await db.from('jadwal').select('id, hari, jam_ke, kelas:kelas_id (nama_kelas)').eq('guru_id', guruId);
-      const urutan = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-      const list = (data || []).sort((a, b) => urutan.indexOf(a.hari) - urutan.indexOf(b.hari));
+      const list = (data || []).sort((a, b) => HARI_LIST.indexOf(a.hari) - HARI_LIST.indexOf(b.hari));
       document.getElementById('jadwalKosong').style.display = list.length ? 'none' : 'block';
-      document.getElementById('listJadwal').innerHTML = list.map(j =>
-        `<div class="setup-list-item"><span>${j.hari}, Jam ${j.jam_ke} <span class="ket">— ${escapeHtml(j.kelas?.nama_kelas ?? '-')}</span></span>
-         <button type="button" class="entry-btn danger" onclick="hapusJadwal('${j.id}')">Hapus</button></div>`
-      ).join('');
+      document.getElementById('listJadwal').innerHTML = list.map(j => {
+        if (editingJadwalId === j.id) {
+          const opsiHari = HARI_LIST.map(h => `<option value="${h}" ${h === j.hari ? 'selected' : ''}>${h}</option>`).join('');
+          return `<div class="setup-list-item" style="flex-wrap:wrap; gap:8px;">
+            <select id="editHari-${j.id}" style="flex:1; min-width:100px;">${opsiHari}</select>
+            <input type="text" id="editJamKe-${j.id}" value="${escapeHtml(j.jam_ke)}" placeholder="Jam ke" style="max-width:100px;">
+            <div style="display:flex; gap:6px; width:100%;">
+              <button type="button" class="btn-tambah" onclick="editJadwalSimpan('${j.id}')" style="flex:1;">Simpan</button>
+              <button type="button" class="entry-btn" onclick="editJadwalBatal()" style="flex:1;">Batal</button>
+            </div>
+          </div>`;
+        }
+        return `<div class="setup-list-item"><span>${j.hari}, Jam ${j.jam_ke} <span class="ket">— ${escapeHtml(j.kelas?.nama_kelas ?? '-')}</span></span>
+         <div style="display:flex; gap:6px;">
+           <button type="button" class="entry-btn" onclick="editJadwalMulai('${j.id}')">Edit</button>
+           <button type="button" class="entry-btn danger" onclick="hapusJadwal('${j.id}')">Hapus</button>
+         </div></div>`;
+      }).join('');
+    }
+
+    function editJadwalMulai(id) { editingJadwalId = id; muatJadwalSetup(); }
+    function editJadwalBatal() { editingJadwalId = null; muatJadwalSetup(); }
+
+    async function editJadwalSimpan(id) {
+      const hari = document.getElementById('editHari-' + id).value;
+      const jamKe = document.getElementById('editJamKe-' + id).value.trim();
+      if (!jamKe) { alert('Jam ke tidak boleh kosong.'); return; }
+      const { error } = await db.from('jadwal').update({ hari, jam_ke: jamKe }).eq('id', id);
+      if (error) { alert('Gagal menyimpan: ' + error.message); return; }
+      editingJadwalId = null;
+      muatJadwalSetup(); muatJadwalGlobal();
     }
 
     async function hapusJadwal(id) {
