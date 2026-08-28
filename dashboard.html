@@ -1066,13 +1066,17 @@
         </div>
         <button class="btn-tambah" onclick="tambahSiswa()" style="width:100%; margin-bottom:14px;">+ Tambah Siswa</button>
 
-        <button type="button" class="subtab-btn" id="btnToggleMassal" onclick="toggleMassal()" style="width:100%; margin-bottom:14px;">📋 Tambah Banyak Sekaligus (Paste Daftar Nama)</button>
+        <button type="button" class="subtab-btn" id="btnToggleMassal" onclick="toggleMassal()" style="width:100%; margin-bottom:14px;">📋 Tambah Banyak Sekaligus (Paste / Upload Excel-CSV)</button>
 
         <div id="boxMassal" style="display:none; margin-bottom:18px; background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px;">
           <p style="font-size:12.5px; color:var(--muted); margin:0 0 8px;">
             Paste daftar nama, satu nama per baris. Boleh dengan nomor di depan (mis. "1. Budi" atau "1 Budi") atau tanpa nomor sama sekali — nomor akan otomatis diurutkan kalau tidak ada.
           </p>
           <textarea id="teksMassal" rows="8" placeholder="1. Budi Santoso&#10;2. Citra Dewi&#10;3. Eka Putra&#10;..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+
+          <p style="font-size:12px; color:var(--muted); margin:12px 0 6px;">Atau upload file Excel/CSV (kolom Nomor opsional, kolom Nama wajib — header baris pertama otomatis dilewati):</p>
+          <input type="file" id="fileMassalSiswa" accept=".csv,.xlsx,.xls">
+
           <div id="previewMassal" style="font-size:12px; color:var(--muted); margin-top:8px;"></div>
           <button class="btn-tambah" onclick="simpanMassal()" style="width:100%; margin-top:10px;">+ Tambahkan Semua ke Kelas Ini</button>
         </div>
@@ -1620,6 +1624,47 @@
       const hasil = parseBarisSiswa(this.value);
       const preview = document.getElementById('previewMassal');
       preview.textContent = hasil.length ? `Terdeteksi ${hasil.length} siswa siap ditambahkan.` : '';
+    });
+
+    document.getElementById('fileMassalSiswa').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const wb = XLSX.read(evt.target.result, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+
+          const baris = [];
+          rows.forEach(r => {
+            const c0 = String(r[0] ?? '').trim();
+            const c1 = String(r[1] ?? '').trim();
+            if (!c0 && !c1) return;
+            // Dua kolom: [Nomor, Nama] kalau kolom pertama angka
+            if (c1 && !isNaN(Number(c0)) && c0 !== '') {
+              if (c1.toLowerCase() === 'nama') return; // lewati header
+              baris.push(`${c0}. ${c1}`);
+            } else {
+              // Satu kolom (atau kolom pertama bukan angka): anggap itu nama
+              const nama = c0 || c1;
+              if (nama.toLowerCase() === 'nama') return; // lewati header
+              if (nama) baris.push(nama);
+            }
+          });
+
+          const textarea = document.getElementById('teksMassal');
+          textarea.value = baris.join('\n');
+          textarea.dispatchEvent(new Event('input'));
+          if (!baris.length) {
+            document.getElementById('previewMassal').textContent = 'Tidak ada nama valid terbaca dari file.';
+          }
+        } catch (err) {
+          document.getElementById('previewMassal').textContent = 'Gagal membaca file: ' + err.message;
+        }
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
     });
 
     async function simpanMassal() {
