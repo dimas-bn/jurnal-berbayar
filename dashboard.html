@@ -1415,6 +1415,8 @@
     <button class="submit" id="btnSimpan" onclick="simpan()">Simpan Jurnal</button>
   </div>
 
+  <script src="offline-draft.js"></script>
+
   <script>
     // ================== KONFIGURASI SUPABASE ==================
     const SUPABASE_URL = "https://eziszpzxszxurvqcsikj.supabase.co";
@@ -2068,6 +2070,24 @@
       btn.textContent = editingId ? 'Menyimpan perubahan…' : 'Menyimpan…';
 
       try {
+        // >>> TAMBAHAN: kalau offline dan ini jurnal BARU (bukan edit),
+        // simpan sebagai draft lokal, jangan lanjut ke Supabase <<<
+        if (!navigator.onLine && !editingId) {
+          simpanDraftLokal({ guru_id: guruId, kelas_id: kelasId, tanggal, hari, jam_ke: jamKe, mapel, materi, siswaPayload });
+          tampilkanIndikatorDraft();
+          showToast('ok', 'Offline -- jurnal disimpan sebagai draft, akan otomatis terkirim saat online.');
+          btn.disabled = false;
+          btn.textContent = 'Simpan';
+          return;
+        }
+        if (!navigator.onLine && editingId) {
+          showToast('err', 'Sedang offline -- mengedit jurnal lama butuh koneksi internet.');
+          btn.disabled = false;
+          btn.textContent = 'Simpan perubahan';
+          return;
+        }
+        // >>> AKHIR TAMBAHAN <<<
+
         let jurnalId = editingId;
         if (editingId) {
           const { error } = await db.from('jurnal').update({ tanggal, kelas_id: kelasId, hari, jam_ke: jamKe, mapel, materi }).eq('id', editingId);
@@ -3340,6 +3360,12 @@
 
     init();
   </script>
-
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
+      });
+    }
+  </script>
 </body>
 </html>

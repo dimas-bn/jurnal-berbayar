@@ -1,0 +1,89 @@
+PANDUAN INTEGRASI: Offline Draft + Service Worker ke JMO
+===========================================================
+(Sudah disesuaikan dengan kode ASLI dashboard.html, baris ~2040-2090)
+
+File yang perlu ditambahkan ke repo (sejajar dengan dashboard.html,
+index.html, manifest.json -- di root folder):
+  1. sw.js
+  2. offline-draft.js
+
+
+TITIK 1 -- Daftarkan service worker
+-----------------------------------
+Tambahkan di mana saja sebelum </body> di dashboard.html:
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
+      });
+    }
+  </script>
+
+
+TITIK 2 -- Muat script offline-draft.js
+-----------------------------------------
+Tambahkan SEBELUM tag <script> utama yang berisi fungsi simpan():
+
+  <script src="offline-draft.js"></script>
+
+
+TITIK 3 -- Sisipkan pengecekan offline di awal simpan()
+-----------------------------------------------------------
+Cari baris persis ini di dashboard.html (sekitar baris 2070):
+
+  try {
+    let jurnalId = editingId;
+
+Ganti jadi (tambahan ditandai >>> ... <<<):
+
+  try {
+        // >>> TAMBAHAN: kalau offline dan ini jurnal BARU (bukan edit),
+        // simpan sebagai draft lokal, jangan lanjut ke Supabase <<<
+        if (!navigator.onLine && !editingId) {
+          simpanDraftLokal({ guru_id: guruId, kelas_id: kelasId, tanggal, hari, jam_ke: jamKe, mapel, materi, siswaPayload });
+          tampilkanIndikatorDraft();
+          showToast('ok', 'Offline -- jurnal disimpan sebagai draft, akan otomatis terkirim saat online.');
+          btn.disabled = false;
+          btn.textContent = 'Simpan';
+          return;
+        }
+        if (!navigator.onLine && editingId) {
+          showToast('err', 'Sedang offline -- mengedit jurnal lama butuh koneksi internet.');
+          btn.disabled = false;
+          btn.textContent = 'Simpan perubahan';
+          return;
+        }
+        // >>> AKHIR TAMBAHAN <<<
+
+        let jurnalId = editingId;
+
+  (baris-baris setelahnya, termasuk "if (editingId) { ... } else { ... }"
+  dan seterusnya, TIDAK PERLU diubah sama sekali -- tetap seperti aslinya)
+
+
+CATATAN PENTING
+-----------------
+- Offline draft HANYA berlaku untuk jurnal BARU. Kalau guru sedang
+  MENGEDIT jurnal lama saat offline, sistem akan menolak dengan
+  pesan jelas ("butuh koneksi internet") -- supaya tidak ada risiko
+  data konflik saat draft edit disinkronkan belakangan.
+
+- Sinkronisasi otomatis jalan begitu koneksi kembali (event 'online'
+  di browser). Guru juga bisa klik badge oranye "X jurnal draft
+  belum tersinkron" di pojok kanan atas untuk memicu manual.
+
+- Uji coba yang disarankan setelah deploy:
+    1. Buka dashboard.html di browser.
+    2. Buka DevTools (F12) > tab Network > centang "Offline".
+    3. Isi form jurnal BARU (bukan edit) seperti biasa, klik Simpan.
+       -> Harus muncul toast "Offline -- jurnal disimpan sebagai draft..."
+       -> Badge oranye harus muncul di pojok kanan atas.
+    4. Un-centang "Offline" di DevTools (kembali online).
+       -> Draft harus otomatis terkirim dalam beberapa detik,
+          badge oranye hilang.
+    5. Cek di Supabase Table Editor > tabel jurnal, pastikan
+       data yang tadi diisi saat "offline" benar-benar masuk,
+       lengkap dengan data absensinya di tabel absensi.
+    6. Coba juga skenario edit jurnal lama saat offline --
+       pastikan muncul pesan penolakan yang jelas, bukan error aneh.
