@@ -1297,6 +1297,7 @@
         </div>
         <button type="button" id="btnResetFilterNilai" class="reset-filter">Reset filter</button>
       </div>
+      <button type="button" id="btnExportNilai" class="entry-btn" style="width:100%; margin-bottom:12px;">📤 Export ke Excel (data sesuai filter)</button>
       <div id="riwayatNilaiList"><p class="loading">Memuat riwayat…</p></div>
     </section>
 
@@ -2706,18 +2707,21 @@
       sel.value = nilaiTerpilih;
     }
 
-    function renderRiwayatNilaiTerfilter() {
-      const listEl = document.getElementById('riwayatNilaiList');
+    function ambilDataNilaiTerfilter() {
       const kelasFilter = document.getElementById('filterKelasNilai').value;
       const dariFilter = document.getElementById('filterNilaiDari').value;
       const sampaiFilter = document.getElementById('filterNilaiSampai').value;
-
-      const dataTersaring = dataRiwayatNilaiSemua.filter(r => {
+      return dataRiwayatNilaiSemua.filter(r => {
         if (kelasFilter && r.kelas_id !== kelasFilter) return false;
         if (dariFilter && r.tanggal < dariFilter) return false;
         if (sampaiFilter && r.tanggal > sampaiFilter) return false;
         return true;
       });
+    }
+
+    function renderRiwayatNilaiTerfilter() {
+      const listEl = document.getElementById('riwayatNilaiList');
+      const dataTersaring = ambilDataNilaiTerfilter();
 
       if (!dataTersaring.length) {
         listEl.innerHTML = dataRiwayatNilaiSemua.length
@@ -2766,6 +2770,36 @@
       document.getElementById('filterNilaiDari').value = '';
       document.getElementById('filterNilaiSampai').value = '';
       renderRiwayatNilaiTerfilter();
+    });
+
+    document.getElementById('btnExportNilai').addEventListener('click', function() {
+      const dataTersaring = ambilDataNilaiTerfilter();
+      if (!dataTersaring.length) { alert('Tidak ada data nilai untuk diekspor (cek filter yang aktif).'); return; }
+
+      const baris = dataTersaring
+        .slice()
+        .sort((a, b) => (a.kelas?.nama_kelas || '').localeCompare(b.kelas?.nama_kelas || '')
+          || a.nama_penilaian.localeCompare(b.nama_penilaian)
+          || (a.siswa?.nomor_presensi || 0) - (b.siswa?.nomor_presensi || 0))
+        .map(r => ({
+          'Kelas': r.kelas?.nama_kelas || '-',
+          'Nama Penilaian': r.nama_penilaian,
+          'Tanggal': r.tanggal,
+          'No. Presensi': r.siswa?.nomor_presensi || '',
+          'Nama Siswa': r.siswa?.nama_siswa || '-',
+          'Nilai': Number(r.nilai),
+          'Kategori': kategoriNilai(Number(r.nilai)).label
+        }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(baris);
+      ws['!cols'] = [{ wch: 12 }, { wch: 26 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 8 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Nilai');
+
+      const kelasFilter = document.getElementById('filterKelasNilai');
+      const namaKelasFile = kelasFilter.value ? kelasFilter.options[kelasFilter.selectedIndex].text.replace(/[^a-z0-9]+/gi, '-') : 'semua-kelas';
+      const tglExport = tanggalLokalISO(new Date());
+      XLSX.writeFile(wb, `Nilai-${namaKelasFile}-${tglExport}.xlsx`);
     });
 
     document.getElementById('riwayatNilaiList').addEventListener('click', function(e) {
