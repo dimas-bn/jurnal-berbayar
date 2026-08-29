@@ -3459,7 +3459,7 @@
     }
 
     cekVersiTerbaruJMO();
-    setInterval(cekVersiTerbaruJMO, 10 * 1000); // cek tiap 10 detik selama app terbuka
+    setInterval(cekVersiTerbaruJMO, 3 * 60 * 1000); // cek tiap 3 menit selama app terbuka
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') cekVersiTerbaruJMO();
     });
