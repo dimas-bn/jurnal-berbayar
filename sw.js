@@ -1,28 +1,29 @@
-// sw.js -- Service Worker untuk JMO (versi 2, sudah diperbaiki)
+// sw.js -- Service Worker untuk JMO (versi 3, perbaikan redirect Cloudflare Pages)
 // Taruh file ini di ROOT folder deploy Cloudflare Pages
-// (sejajar dengan index.html, dashboard.html, manifest.json)
 //
-// PERBAIKAN dari versi 1:
-// - Caching app shell sekarang per-file (bukan all-or-nothing),
-//   supaya 1 file gagal di-download tidak menggagalkan semuanya.
-// - Fetch handler sekarang SELALU mengembalikan Response yang valid,
-//   tidak pernah "undefined" -- itu penyebab error ERR_FAILED
-//   yang muncul di sinyal lemah/flaky.
+// PERBAIKAN dari versi 2:
+// - Path app shell diubah TANPA ".html" (mis. "/dashboard" bukan
+//   "/dashboard.html"), karena Cloudflare Pages otomatis me-redirect
+//   permintaan *.html ke versi tanpa ekstensi. Meminta langsung path
+//   tanpa ekstensi menghindari redirect itu sama sekali.
+// - Ditambahkan pengaman "stripRedirect": kalau SUATU SAAT tetap ada
+//   respons yang berstatus redirected (misal karena alur login/auth
+//   nanti), responsnya dibangun ulang dari awal sebelum dikembalikan
+//   ke browser -- supaya tidak pernah lagi muncul error
+//   "a redirected response was used for a request whose redirect
+//   mode is not follow".
 
-const CACHE_NAME = 'jmo-shell-v2'; // dinaikkan ke v2 supaya cache lama dibuang
+const CACHE_NAME = 'jmo-shell-v3';
 
 const APP_SHELL = [
   '/',
-  '/index.html',
-  '/dashboard.html',
-  '/papan-poin.html',
+  '/dashboard',
+  '/papan-poin',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
 ];
 
-// Halaman fallback sederhana kalau BENAR-BENAR tidak ada apa pun
-// yang bisa ditampilkan (belum pernah online sama sekali di alat ini).
 const OFFLINE_FALLBACK_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>JMO - Offline</title></head>
 <body style="font-family:sans-serif;padding:24px;text-align:center;">
@@ -32,25 +33,38 @@ sehingga belum tersimpan untuk mode offline. Coba buka kembali
 saat ada koneksi internet.</p>
 </body></html>`;
 
-// ==== INSTALL: simpan app shell ke cache, PER FILE (tidak all-or-nothing) ====
+// Bangun ulang Response dari awal supaya flag "redirected" hilang.
+// Ini WAJIB dilakukan sebelum respondWith() untuk request navigasi,
+// kalau tidak, browser akan menolak dengan ERR_FAILED.
+async function stripRedirectFlag(response) {
+  if (!response || !response.redirected) return response;
+  const body = await response.clone().blob();
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       await Promise.all(
-        APP_SHELL.map((path) =>
-          cache.add(path).catch((err) => {
-            // Kalau satu file gagal (misal sinyal lemah saat itu),
-            // catat di console tapi JANGAN gagalkan file lainnya.
+        APP_SHELL.map(async (path) => {
+          try {
+            const res = await fetch(path);
+            const clean = await stripRedirectFlag(res);
+            await cache.put(path, clean);
+          } catch (err) {
             console.warn('[SW] Gagal cache saat install:', path, err);
-          }),
-        ),
+          }
+        }),
       );
     }),
   );
   self.skipWaiting();
 });
 
-// ==== ACTIVATE: bersihkan cache versi lama ====
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -62,55 +76,35 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ==== FETCH ====
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Request ke Supabase TIDAK diintersep sama sekali -- biarkan
-  // browser tangani apa adanya, supaya data selalu yang terbaru
-  // dan tidak pernah "nyasar" ke logika cache di bawah.
-  if (url.hostname.endsWith('.supabase.co')) {
-    return;
-  }
-
-  // Hanya tangani GET -- request POST/PUT dsb dibiarkan lewat SW
-  // (jarang dipakai untuk asset, dan lebih aman tidak diintersep).
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (url.hostname.endsWith('.supabase.co')) return;
+  if (event.request.method !== 'GET') return;
 
   event.respondWith(
     (async () => {
-      // 1. Coba dari cache dulu
       const cached = await caches.match(event.request);
       if (cached) return cached;
 
-      // 2. Coba dari network
       try {
         const fresh = await fetch(event.request);
-        // Simpan salinan ke cache untuk dipakai lagi nanti offline
-        // (hanya untuk file app shell, supaya cache tidak membengkak
-        // dengan request Supabase/aset lain yang tidak relevan).
+        const clean = await stripRedirectFlag(fresh);
+
         if (APP_SHELL.includes(url.pathname) || url.pathname === '/') {
           const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, fresh.clone()).catch(() => {});
+          cache.put(event.request, clean.clone()).catch(() => {});
         }
-        return fresh;
+        return clean;
       } catch (err) {
-        // 3. Network gagal (offline / sinyal putus) DAN tidak ada di cache.
-        //    Untuk navigasi halaman, tampilkan fallback dashboard.html
-        //    kalau ada, atau halaman "sedang offline" sederhana.
         if (event.request.mode === 'navigate') {
-          const fallbackDashboard = await caches.match('/dashboard.html');
+          const fallbackDashboard = await caches.match('/dashboard');
           if (fallbackDashboard) return fallbackDashboard;
           return new Response(OFFLINE_FALLBACK_HTML, {
             status: 200,
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
           });
         }
-        // Untuk request non-navigasi (gambar, dsb) yang gagal total,
-        // kembalikan respons error yang VALID (bukan undefined),
-        // supaya tidak muncul ERR_FAILED.
         return new Response('', { status: 504, statusText: 'Offline' });
       }
     })(),
