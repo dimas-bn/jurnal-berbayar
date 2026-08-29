@@ -1526,22 +1526,22 @@
     }
 
     async function exportSiswaExcel() {
-      const { data: kelasList } = await db.from('kelas').select('id, nama_kelas').eq('guru_id', guruId);
-      if (!kelasList || !kelasList.length) { alert('Belum ada data kelas, jadi belum ada siswa untuk diekspor.'); return; }
-      const idKelas = kelasList.map(k => k.id);
-      const petaKelas = {};
-      kelasList.forEach(k => { petaKelas[k.id] = k.nama_kelas; });
+      const kelasId = document.getElementById('kelasUntukSiswa').value;
+      if (!kelasId) { alert('Pilih kelas terlebih dahulu sebelum export.'); return; }
 
-      const { data } = await db.from('siswa').select('kelas_id, nomor_presensi, nama_siswa').in('kelas_id', idKelas).order('nomor_presensi');
-      if (!data || !data.length) { alert('Belum ada data siswa untuk diekspor.'); return; }
+      const kelasSel = document.getElementById('kelasUntukSiswa');
+      const namaKelas = kelasSel.options[kelasSel.selectedIndex].text;
 
-      const baris = [['Kelas', 'No. Presensi', 'Nama Siswa'],
-        ...data.map(s => [petaKelas[s.kelas_id] || '-', s.nomor_presensi ?? '', s.nama_siswa])];
+      const { data } = await db.from('siswa').select('nomor_presensi, nama_siswa').eq('kelas_id', kelasId).order('nomor_presensi');
+      if (!data || !data.length) { alert('Belum ada siswa di kelas ini untuk diekspor.'); return; }
+
+      const baris = [['No. Presensi', 'Nama Siswa'],
+        ...data.map(s => [s.nomor_presensi ?? '', s.nama_siswa])];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
-      ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 26 }];
-      XLSX.utils.book_append_sheet(wb, ws, 'Siswa');
-      XLSX.writeFile(wb, `Siswa-${tanggalLokalISO(new Date())}.xlsx`);
+      ws['!cols'] = [{ wch: 12 }, { wch: 26 }];
+      XLSX.utils.book_append_sheet(wb, ws, namaKelas.slice(0, 31));
+      XLSX.writeFile(wb, `Siswa-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
     }
 
     async function exportJadwalExcel() {
