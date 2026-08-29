@@ -2491,7 +2491,7 @@
       muatSampah();
     });
 
-    // ==== EXPORT CSV (pengganti backup Excel) ====
+    // ==== EXPORT Excel ====
     async function exportSemuaData() {
       const link = document.getElementById('linkExportExcel');
       link.classList.add('disabled');
@@ -2508,16 +2508,18 @@
         });
       });
 
-      const csv = baris.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      link.href = url;
-      link.download = 'backup-jurnal-mengajar.csv';
-      link.textContent = '📥 Export Semua Data (CSV)';
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{wch:12},{wch:10},{wch:8},{wch:14},{wch:16},{wch:24},{wch:24},{wch:12},{wch:20},{wch:8}];
+      XLSX.utils.book_append_sheet(wb, ws, 'Jurnal Mengajar');
+      XLSX.writeFile(wb, 'backup-jurnal-mengajar.xlsx');
+
       link.classList.remove('disabled');
+      link.textContent = '📥 Export Semua Data (Excel)';
     }
     document.getElementById('linkExportExcel').addEventListener('click', function(e) {
-      if (this.classList.contains('disabled') || !this.href || this.href.endsWith('#')) { e.preventDefault(); exportSemuaData(); }
+      e.preventDefault();
+      exportSemuaData();
     });
 
     // ================== NILAI SISWA ==================
