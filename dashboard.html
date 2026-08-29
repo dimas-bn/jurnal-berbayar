@@ -3423,10 +3423,47 @@
   </script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(console.error);
-      });
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
     }
+
+    // ================== CEK VERSI BARU (banner update otomatis) ==================
+    let etagHalamanSaatIni = null;
+
+    async function cekVersiTerbaruJMO() {
+      try {
+        const res = await fetch('/dashboard', { method: 'HEAD', cache: 'no-store' });
+        const etagBaru = res.headers.get('etag') || res.headers.get('last-modified');
+        if (!etagBaru) return;
+        if (etagHalamanSaatIni === null) { etagHalamanSaatIni = etagBaru; return; }
+        if (etagBaru !== etagHalamanSaatIni) tampilkanBannerUpdateJMO();
+      } catch (err) { /* offline, abaikan diam-diam */ }
+    }
+
+    function tampilkanBannerUpdateJMO() {
+      if (document.getElementById('bannerUpdateJMO')) return;
+      const banner = document.createElement('div');
+      banner.id = 'bannerUpdateJMO';
+      banner.style.cssText = `
+        position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+        background:#1E2B22; color:#F6F2E4; padding:12px 18px; border-radius:14px;
+        display:flex; align-items:center; gap:14px; font-size:13.5px;
+        box-shadow:0 6px 20px rgba(0,0,0,.35); z-index:99999;
+        font-family:'IBM Plex Sans', sans-serif; max-width:90vw;
+      `;
+      banner.innerHTML = `<span>✨ Ada pembaruan aplikasi tersedia</span>
+        <button id="btnMuatUlangJMO" style="background:#C08A2E; color:#fff; border:none;
+          padding:7px 16px; border-radius:20px; font-weight:600; cursor:pointer; font-size:13px;
+          font-family:inherit; white-space:nowrap;">Muat Ulang</button>`;
+      document.body.appendChild(banner);
+      document.getElementById('btnMuatUlangJMO').addEventListener('click', () => location.reload());
+    }
+
+    cekVersiTerbaruJMO();
+    setInterval(cekVersiTerbaruJMO, 3 * 60 * 1000); // cek tiap 3 menit selama app terbuka
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') cekVersiTerbaruJMO();
+    });
+    window.addEventListener('online', cekVersiTerbaruJMO);
   </script>
 </body>
 </html>
