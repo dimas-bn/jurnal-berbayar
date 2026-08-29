@@ -1515,9 +1515,9 @@
     }
 
     async function exportKelasExcel() {
-      const { data } = await db.from('kelas').select('nama_kelas, mapel').eq('guru_id', guruId).order('nama_kelas');
+      const { data } = await db.from('kelas').select('nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
       if (!data || !data.length) { alert('Belum ada data kelas untuk diekspor.'); return; }
-      const baris = [['Nama Kelas', 'Mata Pelajaran'], ...data.map(k => [k.nama_kelas, k.mapel || ''])];
+      const baris = [['Nama Kelas', 'Mata Pelajaran'], ...data.map(k => [k.nama_kelas, k.mata_pelajaran || ''])];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
       ws['!cols'] = [{ wch: 20 }, { wch: 24 }];
@@ -1526,12 +1526,17 @@
     }
 
     async function exportSiswaExcel() {
-      const { data } = await db.from('siswa')
-        .select('nomor_presensi, nama_siswa, kelas:kelas_id (nama_kelas)')
-        .eq('guru_id', guruId).order('nomor_presensi');
+      const { data: kelasList } = await db.from('kelas').select('id, nama_kelas').eq('guru_id', guruId);
+      if (!kelasList || !kelasList.length) { alert('Belum ada data kelas, jadi belum ada siswa untuk diekspor.'); return; }
+      const idKelas = kelasList.map(k => k.id);
+      const petaKelas = {};
+      kelasList.forEach(k => { petaKelas[k.id] = k.nama_kelas; });
+
+      const { data } = await db.from('siswa').select('kelas_id, nomor_presensi, nama_siswa').in('kelas_id', idKelas).order('nomor_presensi');
       if (!data || !data.length) { alert('Belum ada data siswa untuk diekspor.'); return; }
+
       const baris = [['Kelas', 'No. Presensi', 'Nama Siswa'],
-        ...data.map(s => [s.kelas?.nama_kelas || '-', s.nomor_presensi ?? '', s.nama_siswa])];
+        ...data.map(s => [petaKelas[s.kelas_id] || '-', s.nomor_presensi ?? '', s.nama_siswa])];
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
       ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 26 }];
