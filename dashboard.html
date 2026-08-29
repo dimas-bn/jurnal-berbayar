@@ -1052,7 +1052,8 @@
           <input type="text" id="namaKelasBaru" placeholder="Nama kelas, mis. X IPA 1">
           <input type="text" id="mapelKelasBaru" placeholder="Mata pelajaran">
         </div>
-        <button class="btn-tambah" onclick="tambahKelas()" style="width:100%; margin-bottom:18px;">+ Tambah Kelas</button>
+        <button class="btn-tambah" onclick="tambahKelas()" style="width:100%; margin-bottom:12px;">+ Tambah Kelas</button>
+        <button type="button" class="entry-btn" onclick="exportKelasExcel()" style="width:100%; margin-bottom:18px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Semua Data (Excel)</button>
         <div id="listKelas"></div>
         <p class="empty-hint" id="kelasKosong">Belum ada kelas.</p>
       </div>
@@ -1067,7 +1068,7 @@
         </div>
         <button class="btn-tambah" onclick="tambahSiswa()" style="width:100%; margin-bottom:14px;">+ Tambah Siswa</button>
 
-        <button type="button" class="subtab-btn" id="btnToggleMassal" onclick="toggleMassal()" style="width:100%; margin-bottom:14px;">📋 Tambah Banyak Sekaligus (Paste / Upload Excel-CSV)</button>
+        <button type="button" class="subtab-btn" id="btnToggleMassal" onclick="toggleMassal()" style="width:100%; margin-bottom:14px; background:#C08A2E; color:#fff; border-color:#C08A2E;">📋 Tambah Banyak Sekaligus (Paste / Upload Excel-CSV)</button>
 
         <div id="boxMassal" style="display:none; margin-bottom:18px; background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px;">
           <p style="font-size:12.5px; color:var(--muted); margin:0 0 8px;">
@@ -1082,6 +1083,7 @@
           <button class="btn-tambah" onclick="simpanMassal()" style="width:100%; margin-top:10px;">+ Tambahkan Semua ke Kelas Ini</button>
         </div>
 
+        <button type="button" class="entry-btn" onclick="exportSiswaExcel()" style="width:100%; margin-bottom:14px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Semua Data (Excel)</button>
         <div id="listSiswa"></div>
         <p class="empty-hint" id="siswaKosong">Pilih kelas dahulu, lalu tambahkan siswa.</p>
       </div>
@@ -1103,7 +1105,8 @@
             <input type="text" id="jamKeJadwalBaru" placeholder="mis. 1-3 atau 7">
           </div>
         </div>
-        <button class="btn-tambah" onclick="tambahJadwal()" style="width:100%; margin:14px 0 18px;">+ Tambah Jadwal</button>
+        <button class="btn-tambah" onclick="tambahJadwal()" style="width:100%; margin:14px 0 12px;">+ Tambah Jadwal</button>
+        <button type="button" class="entry-btn" onclick="exportJadwalExcel()" style="width:100%; margin-bottom:18px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Semua Data (Excel)</button>
         <div id="listJadwal"></div>
         <p class="empty-hint" id="jadwalKosong">Belum ada jadwal.</p>
       </div>
@@ -1509,6 +1512,45 @@
 
     function escapeHtml(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    async function exportKelasExcel() {
+      const { data } = await db.from('kelas').select('nama_kelas, mapel').eq('guru_id', guruId).order('nama_kelas');
+      if (!data || !data.length) { alert('Belum ada data kelas untuk diekspor.'); return; }
+      const baris = [['Nama Kelas', 'Mata Pelajaran'], ...data.map(k => [k.nama_kelas, k.mapel || ''])];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{ wch: 20 }, { wch: 24 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Kelas');
+      XLSX.writeFile(wb, `Kelas-${tanggalLokalISO(new Date())}.xlsx`);
+    }
+
+    async function exportSiswaExcel() {
+      const { data } = await db.from('siswa')
+        .select('nomor_presensi, nama_siswa, kelas:kelas_id (nama_kelas)')
+        .eq('guru_id', guruId).order('nomor_presensi');
+      if (!data || !data.length) { alert('Belum ada data siswa untuk diekspor.'); return; }
+      const baris = [['Kelas', 'No. Presensi', 'Nama Siswa'],
+        ...data.map(s => [s.kelas?.nama_kelas || '-', s.nomor_presensi ?? '', s.nama_siswa])];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{ wch: 16 }, { wch: 12 }, { wch: 26 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Siswa');
+      XLSX.writeFile(wb, `Siswa-${tanggalLokalISO(new Date())}.xlsx`);
+    }
+
+    async function exportJadwalExcel() {
+      const { data } = await db.from('jadwal').select('hari, jam_ke, kelas:kelas_id (nama_kelas)').eq('guru_id', guruId);
+      if (!data || !data.length) { alert('Belum ada data jadwal untuk diekspor.'); return; }
+      const urutan = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+      const sorted = data.slice().sort((a, b) => urutan.indexOf(a.hari) - urutan.indexOf(b.hari));
+      const baris = [['Hari', 'Jam Ke', 'Kelas'],
+        ...sorted.map(j => [j.hari, j.jam_ke, j.kelas?.nama_kelas || '-'])];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Jadwal');
+      XLSX.writeFile(wb, `Jadwal-${tanggalLokalISO(new Date())}.xlsx`);
     }
 
     // ================== NAVIGASI TAB ==================
