@@ -1,19 +1,22 @@
-// sw.js -- Service Worker untuk JMO (versi 3, perbaikan redirect Cloudflare Pages)
+// sw.js -- Service Worker untuk JMO (versi 4, fix: halaman selalu ambil versi terbaru)
 // Taruh file ini di ROOT folder deploy Cloudflare Pages
 //
-// PERBAIKAN dari versi 2:
-// - Path app shell diubah TANPA ".html" (mis. "/dashboard" bukan
-//   "/dashboard.html"), karena Cloudflare Pages otomatis me-redirect
-//   permintaan *.html ke versi tanpa ekstensi. Meminta langsung path
-//   tanpa ekstensi menghindari redirect itu sama sekali.
-// - Ditambahkan pengaman "stripRedirect": kalau SUATU SAAT tetap ada
-//   respons yang berstatus redirected (misal karena alur login/auth
-//   nanti), responsnya dibangun ulang dari awal sebelum dikembalikan
-//   ke browser -- supaya tidak pernah lagi muncul error
-//   "a redirected response was used for a request whose redirect
-//   mode is not follow".
+// PERBAIKAN dari versi 3:
+// - Versi 3 memakai strategi CACHE-FIRST untuk semua permintaan, termasuk
+//   halaman /dashboard itu sendiri. Akibatnya, begitu /dashboard tersimpan
+//   di cache HP, browser TIDAK PERNAH cek ke server lagi untuk halaman itu
+//   -- update dashboard.html tidak pernah sampai ke HP walau sudah di-deploy,
+//   kecuali sw.js ini sendiri ikut berubah (memicu browser re-download SW).
+// - Versi 4 mengubah strategi untuk halaman (app shell yang dinavigasi:
+//   "/", "/dashboard", "/papan-poin") menjadi NETWORK-FIRST: setiap dibuka
+//   saat online, selalu ambil versi terbaru dari server dan perbarui cache.
+//   Kalau sedang offline, baru jatuh ke versi cache terakhir yang tersimpan.
+//   Aset statis (manifest, ikon) tetap CACHE-FIRST seperti sebelumnya,
+//   karena jarang berubah dan tidak masalah disajikan dari cache.
 
-const CACHE_NAME = 'jmo-shell-v3';
+const CACHE_NAME = 'jmo-shell-v4'; // dinaikkan dari v3 -> v4 supaya browser
+                                     // sadar ada versi SW baru & langsung
+                                     // membuang cache v3 yang lama/basi.
 
 const APP_SHELL = [
   '/',
@@ -23,6 +26,9 @@ const APP_SHELL = [
   '/icon-192.png',
   '/icon-512.png',
 ];
+
+// Path yang HARUS selalu network-first (halaman yang sering di-update)
+const HALAMAN_NETWORK_FIRST = ['/', '/dashboard', '/papan-poin'];
 
 const OFFLINE_FALLBACK_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>JMO - Offline</title></head>
@@ -34,8 +40,6 @@ saat ada koneksi internet.</p>
 </body></html>`;
 
 // Bangun ulang Response dari awal supaya flag "redirected" hilang.
-// Ini WAJIB dilakukan sebelum respondWith() untuk request navigasi,
-// kalau tidak, browser akan menolak dengan ERR_FAILED.
 async function stripRedirectFlag(response) {
   if (!response || !response.redirected) return response;
   const body = await response.clone().blob();
@@ -82,6 +86,35 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.endsWith('.supabase.co')) return;
   if (event.request.method !== 'GET') return;
 
+  const isHalamanUtama =
+    event.request.mode === 'navigate' || HALAMAN_NETWORK_FIRST.includes(url.pathname);
+
+  // ===== HALAMAN APP SHELL: NETWORK-FIRST =====
+  if (isHalamanUtama) {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(event.request);
+          const clean = await stripRedirectFlag(fresh);
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, clean.clone()).catch(() => {});
+          return clean;
+        } catch (err) {
+          // Offline / gagal fetch -> pakai cache terakhir yang tersimpan
+          const cached =
+            (await caches.match(event.request)) || (await caches.match('/dashboard'));
+          if (cached) return cached;
+          return new Response(OFFLINE_FALLBACK_HTML, {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+      })(),
+    );
+    return;
+  }
+
+  // ===== ASET STATIS LAIN (ikon, manifest, dll): CACHE-FIRST seperti semula =====
   event.respondWith(
     (async () => {
       const cached = await caches.match(event.request);
@@ -90,21 +123,10 @@ self.addEventListener('fetch', (event) => {
       try {
         const fresh = await fetch(event.request);
         const clean = await stripRedirectFlag(fresh);
-
-        if (APP_SHELL.includes(url.pathname) || url.pathname === '/') {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, clean.clone()).catch(() => {});
-        }
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(event.request, clean.clone()).catch(() => {});
         return clean;
       } catch (err) {
-        if (event.request.mode === 'navigate') {
-          const fallbackDashboard = await caches.match('/dashboard');
-          if (fallbackDashboard) return fallbackDashboard;
-          return new Response(OFFLINE_FALLBACK_HTML, {
-            status: 200,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          });
-        }
         return new Response('', { status: 504, statusText: 'Offline' });
       }
     })(),
