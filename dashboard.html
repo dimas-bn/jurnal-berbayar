@@ -1220,8 +1220,10 @@
         <button type="button" id="btnResetFilterCatatan" class="reset-filter">Reset filter</button>
       </div>
 
+      <button type="button" id="btnExportCatatanSemua" class="entry-btn" style="width:100%; margin-bottom:8px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Semua (Excel)</button>
+      <button type="button" id="btnExportCatatanKelas" class="entry-btn" style="width:100%; margin-bottom:14px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Kelas Ini (Excel)</button>
+
       <div id="catatanListSemua"><p class="loading">Memuat catatan…</p></div>
-    </section>
 
     <!-- ===== TAB: NILAI SISWA ===== -->
     <section id="panel-nilai" class="page" style="display:none;">
@@ -2307,6 +2309,28 @@
     document.getElementById('btnResetFilterCatatan').addEventListener('click', () => {
       document.getElementById('filterKelasCatatan').value = '';
       renderCatatanSemuaFiltered();
+    });
+    
+    function exportCatatanKeExcel(list, namaSheet, namaFile) {
+      if (!list.length) { alert('Tidak ada catatan untuk diekspor.'); return; }
+      const baris = [['Tanggal', 'Kelas', 'Catatan'], ...list.map(c => [c.tanggal, c.kelas, c.teks])];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 60 }];
+      XLSX.utils.book_append_sheet(wb, ws, namaSheet.slice(0, 31));
+      XLSX.writeFile(wb, namaFile);
+    }
+
+    document.getElementById('btnExportCatatanSemua').addEventListener('click', () => {
+      exportCatatanKeExcel(catatanSemuaData, 'Semua Catatan', `Catatan-Semua-${tanggalLokalISO(new Date())}.xlsx`);
+    });
+
+    document.getElementById('btnExportCatatanKelas').addEventListener('click', () => {
+      const kelasId = document.getElementById('filterKelasCatatan').value;
+      if (!kelasId) { alert('Pilih kelas terlebih dahulu di filter di atas, baru klik Export Kelas Ini.'); return; }
+      const namaKelas = document.getElementById('filterKelasCatatan').selectedOptions[0].text;
+      const filtered = catatanSemuaData.filter(c => c.kelasId === kelasId);
+      exportCatatanKeExcel(filtered, namaKelas, `Catatan-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
     });
 
     document.getElementById('catatanListSemua').addEventListener('click', async ev => {
