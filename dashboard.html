@@ -2571,11 +2571,13 @@
     });
     
     async function exportKelasRiwayat() {
-      const kelasId = document.getElementById('filterKelas').value;
-      if (!kelasId) { alert('Pilih kelas terlebih dahulu di filter di bawah, baru klik Export Kelas Ini.'); return; }
+      const namaKelas = document.getElementById('filterKelas').value;
+      if (!namaKelas) { alert('Pilih kelas terlebih dahulu di filter di bawah, baru klik Export Kelas Ini.'); return; }
 
-      const kelasSel = document.getElementById('filterKelas');
-      const namaKelas = kelasSel.options[kelasSel.selectedIndex].text;
+      const entriKelas = riwayatData.find(e => e.kelas === namaKelas);
+      if (!entriKelas) { alert(`Belum ada data jurnal untuk kelas ${namaKelas}.`); return; }
+      const kelasId = entriKelas.kelasId;
+
       const btn = document.getElementById('btnExportKelasRiwayat');
       btn.disabled = true;
       btn.textContent = '⏳ Menyiapkan file…';
@@ -2607,7 +2609,6 @@
       btn.disabled = false;
       btn.textContent = '📤 Export Kelas Ini (Excel)';
     }
-    document.getElementById('btnExportKelasRiwayat').addEventListener('click', exportKelasRiwayat);
 
     // ================== NILAI SISWA ==================
     let kkmSetting = { batas_jeblok: 50, nilai_kkm: 75, batas_istimewa: 90 };
