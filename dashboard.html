@@ -895,6 +895,7 @@
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
     <button id="tab-admin" onclick="showTab('admin')" style="display:none;">Admin</button>
     <button id="tab-info" onclick="showTab('info')">Info & Masukan</button>
+    <button id="tab-testimoni" onclick="showTab('testimoni')">Testimoni</button>
   </nav>
 
   <main>
@@ -1485,9 +1486,34 @@
       <p id="masukanStatus" style="font-size:12.5px; margin:8px 0 0; display:none;"></p>
       <p class="stat-section-title" style="margin-top:24px;">Masukan Saya Sebelumnya</p>
       <div id="masukanSayaList"></div>
-      <div id="masukanSayaList"></div>
 
-      <a href="https://g.page/r/CRZT2jOWS46AEBM/review" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#201C25; color:#fff; border:1px solid #201C25; margin-top:24px;">⭐ Bantu Review kami di Google Maps</a>
+      <a href="https://g.page/r/CRZT2jOWS46AEBM/review" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#201C25; color:#fff; border:1px solid #201C25; margin-top:24px;">⭐ Beri Review di Google Maps</a>
+    </section>
+
+    <!-- ===== TAB: TESTIMONI ===== -->
+    <section id="panel-testimoni" class="page" style="display:none;">
+      <p class="eyebrow">Bantu Guru Lain Percaya</p>
+      <p class="tanggal-hari">Beri Testimoni</p>
+      <p style="font-size:13px; color:var(--muted); margin:8px 0 16px;">
+        Testimoni Anda bisa ditampilkan di Website Resmi JMO (setelah disetujui oleh Pak Dimas) untuk membantu guru lainnya percaya untuk mencoba aplikasi ini.
+      </p>
+
+      <label for="testiNamaTampilan">Nama & Info yang ditampilkan publik</label>
+      <input type="text" id="testiNamaTampilan" placeholder="mis. Bu Sarah, Guru SMA Negeri 1 IKN">
+
+      <label style="margin-top:10px; display:block;">Rating</label>
+      <div id="testiStars" style="font-size:28px; letter-spacing:4px; margin:4px 0 10px; cursor:pointer;">
+        <span data-val="1">☆</span><span data-val="2">☆</span><span data-val="3">☆</span><span data-val="4">☆</span><span data-val="5">☆</span>
+      </div>
+
+      <label for="testiTeks">Testimoni</label>
+      <textarea id="testiTeks" rows="4" placeholder="Ceritakan pengalaman Anda pakai JMO..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+
+      <button type="button" class="btn-tambah" id="btnKirimTestimoni" style="width:100%; margin-top:12px;">Kirim Testimoni</button>
+      <p id="testimoniStatus" style="font-size:12.5px; margin:8px 0 0; display:none;"></p>
+
+      <p class="stat-section-title" style="margin-top:20px;">Testimoni Saya Sebelumnya</p>
+      <div id="testimoniSayaList"></div>
     </section>
 
   </main>
@@ -1640,7 +1666,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin','info'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin','info','testimoni'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -1657,8 +1683,9 @@
       if (tab === 'statistik') initStatFilter();
       if (tab === 'poin') isiFilterPoinKelas();
       if (tab === 'setup') showSubtab(subtabAktif);
-      if (tab === 'admin') { muatAdminStatistik(); muatMasukanAdmin(); }
+      if (tab === 'admin') { muatAdminStatistik(); muatMasukanAdmin(); muatTestimoniAdmin(); }
       if (tab === 'info') muatMasukanSaya();
+      if (tab === 'testimoni') muatTestimoniSaya();
     }
 
     let subtabAktif = 'kelas';
