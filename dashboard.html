@@ -3375,10 +3375,47 @@
         `<div class="absen-list-item"><span class="rank">#${i+1}</span><span class="nama-kelas">${escapeHtml(s.nama)}<br><span class="kelas-kecil">${escapeHtml(s.kelas)} · ${s.jumlahTercatat}x disesuaikan</span></span><span class="total-badge poin-badge-down">${s.rataPoin}</span></div>`
       ).join('');
 
-      const poinInfoKosong = (!data.topPoinTertinggi.length && !data.topPoinTerendah.length)
+            const poinInfoKosong = (!data.topPoinTertinggi.length && !data.topPoinTerendah.length)
         ? '<p class="stat-section-title">Poin siswa</p><p class="empty-hint">Belum ada penyesuaian poin pada periode ini — semua siswa masih di poin default (3).</p>' : '';
 
-      resultEl.innerHTML = cardsHtml + barsHtml + topHtml + poinTertinggiHtml + poinTerendahHtml + poinInfoKosong;
+      const actionsHtml = `<div class="rekap-actions">
+        <button type="button" class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button>
+        <button type="button" class="print-btn" id="btnExportStatistikExcel" style="background:#5B6B8C;">📤 Export ke Excel</button>
+      </div>`;
+
+      resultEl.innerHTML = cardsHtml + barsHtml + topHtml + poinTertinggiHtml + poinTerendahHtml + poinInfoKosong + actionsHtml;
+
+      document.getElementById('btnExportStatistikExcel').addEventListener('click', () => {
+        const semuaWaktu = document.getElementById('statSemuaWaktu').checked;
+        const bulan = Number(document.getElementById('statBulan').value);
+        const tahun = Number(document.getElementById('statTahun').value);
+        const namaPeriode = semuaWaktu ? 'Semua-Waktu' : `${BULAN_ID[bulan - 1]}-${tahun}`;
+
+        const wb = XLSX.utils.book_new();
+
+        const wsRingkasan = XLSX.utils.aoa_to_sheet([
+          ['Total Pertemuan', data.totalPertemuan],
+          ['Rata-rata Kehadiran (%)', data.rataRataKehadiran],
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsRingkasan, 'Ringkasan');
+
+        const wsKelas = XLSX.utils.aoa_to_sheet([['Kelas', 'Jumlah Pertemuan'], ...data.pertemuanPerKelas.map(k => [k.kelas, k.jumlah])]);
+        XLSX.utils.book_append_sheet(wb, wsKelas, 'Pertemuan per Kelas');
+
+        const wsAbsen = XLSX.utils.aoa_to_sheet([['Nama', 'Kelas', 'Izin', 'Sakit', 'Dispensasi', 'Alpa', 'Total'],
+          ...data.topTidakHadir.map(s => [s.nama, s.kelas, s.Izin, s.Sakit, s.Dispensasi, s.Alpa, s.total])]);
+        XLSX.utils.book_append_sheet(wb, wsAbsen, 'Sering Tidak Hadir');
+
+        const wsPoinTinggi = XLSX.utils.aoa_to_sheet([['Nama', 'Kelas', 'Rata² Poin'],
+          ...data.topPoinTertinggi.map(s => [s.nama, s.kelas, s.rataPoin])]);
+        XLSX.utils.book_append_sheet(wb, wsPoinTinggi, 'Poin Tertinggi');
+
+        const wsPoinRendah = XLSX.utils.aoa_to_sheet([['Nama', 'Kelas', 'Rata² Poin'],
+          ...data.topPoinTerendah.map(s => [s.nama, s.kelas, s.rataPoin])]);
+        XLSX.utils.book_append_sheet(wb, wsPoinRendah, 'Poin Terendah');
+
+        XLSX.writeFile(wb, `Statistik-${namaPeriode}.xlsx`);
+      });
     }
 
     // ================== STATISTIK: PROGRES NILAI PER SISWA ==================
