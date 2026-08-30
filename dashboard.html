@@ -1186,6 +1186,7 @@
       <p class="tanggal-hari">Riwayat Jurnal</p>
 
       <a id="linkExportExcel" href="#" target="_blank" class="print-btn export-link">📥 Export Semua Data (Excel)</a>
+      <button type="button" id="btnExportKelasRiwayat" class="entry-btn" style="width:100%; margin-top:10px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Kelas Ini (Excel)</button>
       <button type="button" id="btnToggleSampah" class="entry-btn" style="margin:14px 0 4px;">🗑️ Sampah</button>
 
       <div id="sampahSection" style="display:none; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--paper-line);">
@@ -2568,6 +2569,45 @@
       e.preventDefault();
       exportSemuaData();
     });
+    
+    async function exportKelasRiwayat() {
+      const kelasId = document.getElementById('filterKelas').value;
+      if (!kelasId) { alert('Pilih kelas terlebih dahulu di filter di bawah, baru klik Export Kelas Ini.'); return; }
+
+      const kelasSel = document.getElementById('filterKelas');
+      const namaKelas = kelasSel.options[kelasSel.selectedIndex].text;
+      const btn = document.getElementById('btnExportKelasRiwayat');
+      btn.disabled = true;
+      btn.textContent = '⏳ Menyiapkan file…';
+
+      const { data } = await db.from('jurnal')
+        .select('tanggal, hari, jam_ke, mapel, materi, absensi (status, keterangan, poin, siswa:siswa_id (nama_siswa))')
+        .eq('guru_id', guruId).eq('kelas_id', kelasId).is('dihapus_pada', null).order('tanggal');
+
+      if (!data || !data.length) {
+        alert(`Belum ada data jurnal untuk kelas ${namaKelas}.`);
+        btn.disabled = false;
+        btn.textContent = '📤 Export Kelas Ini (Excel)';
+        return;
+      }
+
+      const baris = [['Tanggal','Hari','Jam Ke','Mapel','Materi','Nama Siswa','Status','Keterangan','Poin']];
+      data.forEach(j => {
+        (j.absensi || []).forEach(a => {
+          baris.push([j.tanggal, j.hari, j.jam_ke, j.mapel || '', j.materi || '', a.siswa?.nama_siswa || '', a.status, a.keterangan || '', a.poin]);
+        });
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      ws['!cols'] = [{wch:12},{wch:10},{wch:8},{wch:16},{wch:24},{wch:24},{wch:12},{wch:20},{wch:8}];
+      XLSX.utils.book_append_sheet(wb, ws, namaKelas.slice(0, 31));
+      XLSX.writeFile(wb, `Jurnal-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
+
+      btn.disabled = false;
+      btn.textContent = '📤 Export Kelas Ini (Excel)';
+    }
+    document.getElementById('btnExportKelasRiwayat').addEventListener('click', exportKelasRiwayat);
 
     // ================== NILAI SISWA ==================
     let kkmSetting = { batas_jeblok: 50, nilai_kkm: 75, batas_istimewa: 90 };
