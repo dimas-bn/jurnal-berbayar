@@ -894,6 +894,7 @@
     <button id="tab-rekap" onclick="showTab('rekap')">Rekap</button>
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
     <button id="tab-admin" onclick="showTab('admin')" style="display:none;">Admin</button>
+    <button id="tab-info" onclick="showTab('info')">Info & Masukan</button>
   </nav>
 
   <main>
@@ -1414,7 +1415,41 @@
         diisi dan kapan terakhir kali aktif.
       </p>
       <button type="button" class="submit" id="btnRefreshAdmin">🔄 Muat / Perbarui Data</button>
-      <div id="adminResult"></div>
+            <div id="adminResult"></div>
+    </section>
+
+    <!-- ===== TAB: INFO & MASUKAN ===== -->
+    <section id="panel-info" class="page" style="display:none;">
+      <p class="eyebrow">Tautan & Masukan</p>
+      <p class="tanggal-hari">Info & Masukan</p>
+      <p style="font-size:13px; color:var(--muted); margin:8px 0 16px;">
+        Kumpulan tautan penting seputar JMO, tombol untuk membagikan aplikasi ini ke rekan guru, dan kotak masukan kalau kamu punya kritik, saran, atau ide.
+      </p>
+
+      <p class="stat-section-title">Tautan Penting</p>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+        <a href="https://jurnalmengajar.web.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none;">🌐 Buka Aplikasi JMO</a>
+        <a href="https://www.dimasbn.my.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#fff; color:var(--ink); border:1px solid var(--ink);">👤 Website Pak Dimas</a>
+        <a href="https://dimasbn.my.id/p/paket-harga-jmo.html" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#fff; color:var(--ink); border:1px solid var(--ink);">💳 Paket & Harga JMO</a>
+      </div>
+
+      <button type="button" class="btn-tambah" id="btnBagikanJMO" style="width:100%; margin-bottom:24px;">📤 Bagikan JMO ke Rekan Guru</button>
+
+      <p class="stat-section-title">Kirim Masukan</p>
+      <label for="masukanKategori">Kategori</label>
+      <select id="masukanKategori">
+        <option value="masukan">Masukan</option>
+        <option value="kritik">Kritik</option>
+        <option value="saran">Saran</option>
+        <option value="bug">Laporan Bug</option>
+        <option value="lainnya">Lainnya</option>
+      </select>
+
+      <label for="masukanPesan" style="margin-top:10px; display:block;">Pesan</label>
+      <textarea id="masukanPesan" rows="4" placeholder="Tulis masukan, kritik, atau ide kamu di sini..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+
+      <button type="button" class="btn-tambah" id="btnKirimMasukan" style="width:100%; margin-top:12px;">Kirim Masukan</button>
+      <p id="masukanStatus" style="font-size:12.5px; margin:8px 0 0; display:none;"></p>
     </section>
 
   </main>
@@ -1567,7 +1602,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin','info'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -3492,7 +3527,53 @@
 
     // ================== ADMIN (statistik penggunaan pengguna) ==================
     document.getElementById('btnRefreshAdmin').addEventListener('click', muatAdminStatistik);
+        document.getElementById('btnBagikanJMO').addEventListener('click', async () => {
+      const shareData = {
+        title: 'Jurnal Mengajar Online (JMO)',
+        text: 'Aplikasi jurnal mengajar online untuk guru — praktis dan gratis dicoba 7 hari. Coba yuk!',
+        url: 'https://jurnalmengajar.web.id/'
+      };
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+        } else {
+          await navigator.clipboard.writeText(shareData.url);
+          alert('Link JMO sudah disalin! Tinggal tempel ke WhatsApp/grup guru kamu.');
+        }
+      } catch (err) {
+        // pengguna batal share, tidak perlu ditangani
+      }
+    });
 
+    document.getElementById('btnKirimMasukan').addEventListener('click', async () => {
+      const kategori = document.getElementById('masukanKategori').value;
+      const pesan = document.getElementById('masukanPesan').value.trim();
+      const statusEl = document.getElementById('masukanStatus');
+
+      if (!pesan) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Tulis dulu pesannya ya.';
+        return;
+      }
+
+      const { data: { user } } = await db.auth.getUser();
+      const { error } = await db.from('Masukan Pengguna').insert({
+        guru_id: user.id,
+        kategori: kategori,
+        pesan: pesan
+      });
+
+      statusEl.style.display = 'block';
+      if (error) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Gagal mengirim, coba lagi ya.';
+      } else {
+        statusEl.style.color = 'var(--accent-dark)';
+        statusEl.textContent = 'Terima kasih! Masukan kamu sudah terkirim.';
+        document.getElementById('masukanPesan').value = '';
+      }
+    });
     async function muatAdminStatistik() {
       const resultEl = document.getElementById('adminResult');
       resultEl.innerHTML = '<p class="loading">Memuat data…</p>';
