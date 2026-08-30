@@ -1441,13 +1441,15 @@
       <p class="tanggal-hari">Statistik Penggunaan Pengguna</p>
       <p style="font-size:13px; color:var(--muted); margin:8px 0 14px;">
         Menampilkan seberapa aktif tiap guru terdaftar menggunakan JMO, berdasarkan jumlah jurnal yang sudah pernah
-        diisi dan kapan terakhir kali aktif.
-      </p>
+        diisi dan kapan terakhir kali aktif.</p>
       <button type="button" class="submit" id="btnRefreshAdmin">🔄 Muat / Perbarui Data</button>
             <div id="adminResult"></div>
             <p class="stat-section-title" style="margin-top:24px;">Masukan dari Pengguna</p>
       <button type="button" class="btn-tambah" id="btnRefreshMasukanAdmin" style="width:100%;">🔄 Muat / Perbarui Masukan</button>
       <div id="masukanAdminResult" style="margin-top:12px;"></div>
+      <p class="stat-section-title" style="margin-top:24px;">Testimoni Menunggu Persetujuan</p>
+      <button type="button" class="btn-tambah" id="btnRefreshTestimoniAdmin" style="width:100%;">🔄 Muat / Perbarui Testimoni</button>
+      <div id="testimoniAdminResult" style="margin-top:12px;"></div>
     </section>
 
     <!-- ===== TAB: INFO & MASUKAN ===== -->
@@ -3729,7 +3731,7 @@
       }
     }
 
-        // ================== BINTANG RATING ==================
+    // ================== BINTANG RATING ==================
     let ratingTerpilih = 0;
     document.querySelectorAll('#testiStars span').forEach(star => {
       star.addEventListener('click', () => {
