@@ -1416,6 +1416,9 @@
       </p>
       <button type="button" class="submit" id="btnRefreshAdmin">🔄 Muat / Perbarui Data</button>
             <div id="adminResult"></div>
+            <p class="stat-section-title" style="margin-top:24px;">Masukan dari Pengguna</p>
+      <button type="button" class="btn-tambah" id="btnRefreshMasukanAdmin" style="width:100%;">🔄 Muat / Perbarui Masukan</button>
+      <div id="masukanAdminResult" style="margin-top:12px;"></div>
     </section>
 
     <!-- ===== TAB: INFO & MASUKAN ===== -->
@@ -1450,6 +1453,8 @@
 
       <button type="button" class="btn-tambah" id="btnKirimMasukan" style="width:100%; margin-top:12px;">Kirim Masukan</button>
       <p id="masukanStatus" style="font-size:12.5px; margin:8px 0 0; display:none;"></p>
+      <p class="stat-section-title" style="margin-top:24px;">Masukan Saya Sebelumnya</p>
+      <div id="masukanSayaList"></div>
     </section>
 
   </main>
@@ -1619,7 +1624,8 @@
       if (tab === 'statistik') initStatFilter();
       if (tab === 'poin') isiFilterPoinKelas();
       if (tab === 'setup') showSubtab(subtabAktif);
-      if (tab === 'admin') muatAdminStatistik();
+      if (tab === 'admin') { muatAdminStatistik(); muatMasukanAdmin(); }
+      if (tab === 'info') muatMasukanSaya();
     }
 
     let subtabAktif = 'kelas';
@@ -3575,6 +3581,94 @@
         document.getElementById('masukanPesan').value = '';
       }
     });
+
+        document.getElementById('btnRefreshMasukanAdmin').addEventListener('click', muatMasukanAdmin);
+
+    async function muatMasukanAdmin() {
+      const box = document.getElementById('masukanAdminResult');
+      box.innerHTML = '<p class="loading">Memuat masukan…</p>';
+
+      const { data, error } = await db.rpc('get_semua_masukan_admin');
+      if (error) {
+        box.innerHTML = '<p class="no-match">Gagal memuat: ' + error.message + '</p>';
+        return;
+      }
+      if (!data || data.length === 0) {
+        box.innerHTML = '<p class="no-match">Belum ada masukan masuk.</p>';
+        return;
+      }
+
+      box.innerHTML = data.map(m => `
+        <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px; margin-bottom:10px;">
+          <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">
+            <b>${m.nama_guru || m.email}</b> · ${m.kategori} · ${new Date(m.dibuat_pada).toLocaleString('id-ID')}
+          </p>
+          <p style="font-size:14px; margin:0 0 10px;">${m.pesan}</p>
+          ${m.balasan_admin ? `
+            <p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;">
+              <b>Balasan kamu (${new Date(m.dibalas_pada).toLocaleString('id-ID')}):</b><br>${m.balasan_admin}
+            </p>
+          ` : ''}
+          <textarea id="balas-${m.id}" rows="2" placeholder="Tulis balasan…" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;">${m.balasan_admin || ''}</textarea>
+          <button type="button" class="btn-tambah" style="margin-top:6px;" onclick="kirimBalasanMasukan('${m.id}')">Kirim Balasan</button>
+        </div>
+      `).join('');
+    }
+
+    async function kirimBalasanMasukan(id) {
+      const teks = document.getElementById('balas-' + id).value.trim();
+      if (!teks) { alert('Tulis balasannya dulu.'); return; }
+      const { error } = await db.rpc('balas_masukan_admin', { p_id: id, p_balasan: teks });
+      if (error) {
+        alert('Gagal kirim balasan: ' + error.message);
+      } else {
+        muatMasukanAdmin();
+      }
+    }
+
+    async function muatMasukanSaya() {
+      const box = document.getElementById('masukanSayaList');
+      box.innerHTML = '<p class="loading">Memuat…</p>';
+
+      const { data: { user } } = await db.auth.getUser();
+      const { data, error } = await db.from('masukan_pengguna')
+        .select('*')
+        .eq('guru_id', user.id)
+        .order('dibuat_pada', { ascending: false });
+
+      if (error) {
+        box.innerHTML = '<p class="no-match">Gagal memuat riwayat.</p>';
+        return;
+      }
+      if (!data || data.length === 0) {
+        box.innerHTML = '<p class="no-match">Belum pernah kirim masukan.</p>';
+        return;
+      }
+
+      box.innerHTML = data.map(m => `
+        <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:12px; margin-bottom:10px;">
+          <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">${m.kategori} · ${new Date(m.dibuat_pada).toLocaleString('id-ID')}</p>
+          <p style="font-size:13.5px; margin:0 0 8px;">${m.pesan}</p>
+          ${m.balasan_admin ? `
+            <p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;">
+              <b>Balasan Pak Dimas:</b><br>${m.balasan_admin}
+            </p>
+          ` : '<p style="font-size:12px; color:var(--muted); font-style:italic; margin:0 0 8px;">Belum dibalas.</p>'}
+          <button type="button" onclick="hapusMasukanSaya('${m.id}')" style="background:none; border:none; color:var(--red); font-size:12.5px; text-decoration:underline; cursor:pointer; padding:0;">🗑️ Hapus</button>
+        </div>
+      `).join('');
+    }
+
+    async function hapusMasukanSaya(id) {
+      if (!confirm('Hapus masukan ini? Tidak bisa dikembalikan.')) return;
+      const { error } = await db.from('masukan_pengguna').delete().eq('id', id);
+      if (error) {
+        alert('Gagal menghapus: ' + error.message);
+      } else {
+        muatMasukanSaya();
+      }
+    }
+
     async function muatAdminStatistik() {
       const resultEl = document.getElementById('adminResult');
       resultEl.innerHTML = '<p class="loading">Memuat data…</p>';
