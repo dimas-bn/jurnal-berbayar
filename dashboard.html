@@ -3729,6 +3729,104 @@
       }
     }
 
+        // ================== BINTANG RATING ==================
+    let ratingTerpilih = 0;
+    document.querySelectorAll('#testiStars span').forEach(star => {
+      star.addEventListener('click', () => {
+        ratingTerpilih = parseInt(star.dataset.val);
+        document.querySelectorAll('#testiStars span').forEach(s => {
+          s.textContent = parseInt(s.dataset.val) <= ratingTerpilih ? '★' : '☆';
+        });
+      });
+    });
+
+    // ================== KIRIM TESTIMONI (guru) ==================
+    document.getElementById('btnKirimTestimoni').addEventListener('click', async () => {
+      const nama = document.getElementById('testiNamaTampilan').value.trim();
+      const teks = document.getElementById('testiTeks').value.trim();
+      const statusEl = document.getElementById('testimoniStatus');
+
+      if (!nama || !teks || ratingTerpilih === 0) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Isi nama tampilan, rating bintang, dan testimoni dulu ya.';
+        return;
+      }
+
+      const { data: { user } } = await db.auth.getUser();
+      const { error } = await db.from('testimoni').insert({
+        guru_id: user.id,
+        nama_tampilan: nama,
+        rating: ratingTerpilih,
+        teks: teks
+      });
+
+      statusEl.style.display = 'block';
+      if (error) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Gagal mengirim: ' + error.message;
+      } else {
+        statusEl.style.color = 'var(--accent-dark)';
+        statusEl.textContent = 'Terima kasih! Testimoni Anda menunggu persetujuan.';
+        document.getElementById('testiNamaTampilan').value = '';
+        document.getElementById('testiTeks').value = '';
+        ratingTerpilih = 0;
+        document.querySelectorAll('#testiStars span').forEach(s => s.textContent = '☆');
+        muatTestimoniSaya();
+      }
+    });
+
+    async function muatTestimoniSaya() {
+      const box = document.getElementById('testimoniSayaList');
+      const { data: { user } } = await db.auth.getUser();
+      const { data, error } = await db.from('testimoni')
+        .select('*')
+        .eq('guru_id', user.id)
+        .order('dibuat_pada', { ascending: false });
+
+      if (error || !data || data.length === 0) { box.innerHTML = ''; return; }
+
+      const labelStatus = { pending: '⏳ Menunggu persetujuan', approved: '✅ Disetujui & tampil di landing page', rejected: '❌ Tidak disetujui' };
+      box.innerHTML = data.map(t => `
+        <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:12px; margin-bottom:8px;">
+          <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)} · ${labelStatus[t.status]}</p>
+          <p style="font-size:13.5px; margin:0;">${t.teks}</p>
+        </div>
+      `).join('');
+    }
+
+    // ================== ADMIN: KELOLA TESTIMONI ==================
+    document.getElementById('btnRefreshTestimoniAdmin').addEventListener('click', muatTestimoniAdmin);
+
+    async function muatTestimoniAdmin() {
+      const box = document.getElementById('testimoniAdminResult');
+      box.innerHTML = '<p class="loading">Memuat testimoni…</p>';
+
+      const { data, error } = await db.rpc('get_semua_testimoni_admin');
+      if (error) { box.innerHTML = '<p class="no-match">Gagal memuat: ' + error.message + '</p>'; return; }
+      if (!data || data.length === 0) { box.innerHTML = '<p class="no-match">Belum ada testimoni masuk.</p>'; return; }
+
+      const labelStatus = { pending: '⏳ Pending', approved: '✅ Disetujui', rejected: '❌ Ditolak' };
+      box.innerHTML = data.map(t => `
+        <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px; margin-bottom:10px;">
+          <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">
+            <b>${t.nama_guru || t.email}</b> · ${t.nama_tampilan} · ${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)} · ${labelStatus[t.status]}
+          </p>
+          <p style="font-size:14px; margin:0 0 10px;">${t.teks}</p>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn-tambah" style="background:var(--accent); border-color:var(--accent);" onclick="prosesTestimoni('${t.id}','approved')">✅ Setujui</button>
+            <button type="button" class="btn-tambah" style="background:var(--red); border-color:var(--red);" onclick="prosesTestimoni('${t.id}','rejected')">❌ Tolak</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function prosesTestimoni(id, status) {
+      const { error } = await db.rpc('proses_testimoni_admin', { p_id: id, p_status: status });
+      if (error) { alert('Gagal memproses: ' + error.message); }
+      else { muatTestimoniAdmin(); }
+    }
+
     async function muatAdminStatistik() {
       const resultEl = document.getElementById('adminResult');
       resultEl.innerHTML = '<p class="loading">Memuat data…</p>';
