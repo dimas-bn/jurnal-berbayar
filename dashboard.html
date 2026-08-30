@@ -898,6 +898,24 @@
       <button type="button" id="btnTutupModalNama" onclick="tutupModalGantiNama()" style="margin-top:10px; background:none; border:none; color:var(--muted); font-size:12.5px; text-decoration:underline; cursor:pointer;">Nanti saja</button>
     </div>
   </div>
+  
+  <!-- Modal: Onboarding Guru Baru -->
+<div id="modal-onboarding" style="display:none; position:fixed; inset:0; background:rgba(20,30,24,0.55); z-index:200; align-items:center; justify-content:center;">
+  <div style="background:var(--paper); border-radius:14px; max-width:380px; width:100%; padding:26px 22px; text-align:center; font-family:inherit;">
+    <div style="font-size:34px; margin-bottom:6px;">👋</div>
+    <h2 style="font-family:'Fraunces',serif; font-style:italic; color:var(--ink); margin:0 0 8px; font-size:20px;">Selamat Datang di Jurnal Mengajar!</h2>
+    <p style="color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 16px; text-align:left;">
+      Beberapa hal singkat sebelum mulai:
+    </p>
+    <ul style="color:var(--muted); font-size:13.5px; line-height:1.7; margin:0 0 18px; padding-left:20px; text-align:left;">
+      <li>Isi jurnal harian di tab <b>Isi Jurnal</b></li>
+      <li>Lihat rekap otomatis di tab <b>Rekap</b></li>
+      <li>Data tersimpan otomatis, bisa dibuka kapan saja</li>
+    </ul>
+    <button type="button" onclick="selesaiOnboarding()" style="width:100%; background:var(--accent-dark); color:#fff; border:none; padding:12px; border-radius:10px; font-size:14px; cursor:pointer;">Mengerti, Mulai!</button>
+  </div>
+</div>
+
 
   <nav class="tabs">
     <button id="tab-poin" onclick="showTab('poin')">Sistem Poin</button>
@@ -1587,7 +1605,7 @@
       }
 
       const { data: profil } = await db.from('profil_guru')
-        .select('nama_lengkap, paket, tanggal_berakhir').eq('id', guruId).single();
+      .select('nama_lengkap, paket, tanggal_berakhir, sudah_onboarding').eq('id', guruId).single();
 
       if (!profil) {
         alert('Akun Anda tidak ditemukan atau sudah dinonaktifkan. Anda akan dikeluarkan.');
@@ -1623,14 +1641,23 @@
         bukaModalGantiNama(true);
       }
 
+      if (!profil.sudah_onboarding) {
+        bukaModalOnboarding();
+      }
+
       initTanggal();
       muatDaftarKelasGlobal();
       muatJadwalGlobal();
       cekPengingatHariIni();
-    }
+      }
 
-    let namaLengkapSaatIni = '';
-    let labelPaketSaatIni = '';
+      async function selesaiOnboarding() {
+        await db.from('profil_guru').update({ sudah_onboarding: true }).eq('id', guruId);
+        document.getElementById('modal-onboarding').style.display = 'none';
+      }
+
+      let namaLengkapSaatIni = '';
+      let labelPaketSaatIni = '';
 
     function bukaModalGantiNama(otomatis) {
       document.getElementById('judulModalNama').textContent = otomatis ? 'Satu Langkah Lagi!' : 'Ubah Nama Anda';
@@ -1640,6 +1667,10 @@
       document.getElementById('inputNamaBaru').value = otomatis ? '' : namaLengkapSaatIni;
       document.getElementById('pesanGantiNama').style.display = 'none';
       document.getElementById('modalGantiNama').style.display = 'flex';
+    }
+
+    function bukaModalOnboarding() {
+       document.getElementById('modal-onboarding').style.display = 'flex';
     }
 
     function tutupModalGantiNama() {
