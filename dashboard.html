@@ -3494,15 +3494,23 @@
     }
 
     // ================== CEK VERSI BARU (banner update otomatis) ==================
-    let etagHalamanSaatIni = null;
+    let hashHalamanSaatIni = null;
+
+    function hashSederhana(teks) {
+      let hash = 0;
+      for (let i = 0; i < teks.length; i++) {
+        hash = (hash * 31 + teks.charCodeAt(i)) | 0;
+      }
+      return hash;
+    }
 
     async function cekVersiTerbaruJMO() {
       try {
-        const res = await fetch('/dashboard', { method: 'HEAD', cache: 'no-store' });
-        const etagBaru = res.headers.get('etag') || res.headers.get('last-modified');
-        if (!etagBaru) return;
-        if (etagHalamanSaatIni === null) { etagHalamanSaatIni = etagBaru; return; }
-        if (etagBaru !== etagHalamanSaatIni) tampilkanBannerUpdateJMO();
+        const res = await fetch('/dashboard', { cache: 'no-store' });
+        const teks = await res.text();
+        const hashBaru = hashSederhana(teks);
+        if (hashHalamanSaatIni === null) { hashHalamanSaatIni = hashBaru; return; }
+        if (hashBaru !== hashHalamanSaatIni) tampilkanBannerUpdateJMO();
       } catch (err) { /* offline, abaikan diam-diam */ }
     }
 
@@ -3526,7 +3534,7 @@
     }
 
     cekVersiTerbaruJMO();
-    setInterval(cekVersiTerbaruJMO, 3 * 60 * 1000); // cek tiap 3 menit selama app terbuka
+    setInterval(cekVersiTerbaruJMO, 3 * 60 * 1000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') cekVersiTerbaruJMO();
     });
