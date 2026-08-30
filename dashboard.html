@@ -1846,10 +1846,41 @@
       }
     }
 
+    async function muatKelasSetup() {
+       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
+       const wadah = document.getElementById('listKelas');
+       document.getElementById('kelasKosong').style.display = (!data || !data.length) ? 'block' : 'none';
+       wadah.innerHTML = (data || []).map(k =>
+       `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
+       <span>
+       <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
+       <button type="button" class="entry-btn" onclick="duplikasiKelas('${k.id}', '${escapeHtml(k.nama_kelas)}', '${escapeHtml(k.mata_pelajaran)}')">📋 Duplikat</button>
+       <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
+       </span></div>`
+      ).join('');
+    }
+
     async function hapusKelas(id) {
       if (!confirm('Hapus kelas ini? Semua siswa & jadwal di kelas ini ikut terhapus.')) return;
       await db.from('kelas').delete().eq('id', id);
       muatKelasSetup(); muatDaftarKelasGlobal();
+    }
+
+    async function duplikasiKelas(kelasId, namaLama, mapelLama) {
+      const namaBaru = prompt('Nama kelas paralel baru:', namaLama + ' (2)');
+      if (!namaBaru || !namaBaru.trim()) return;
+
+      const { error } = await db.from('kelas').insert({
+      guru_id: guruId,
+      nama_kelas: namaBaru.trim(),
+      mata_pelajaran: mapelLama
+      });
+
+      if (error) { alert('Gagal duplikasi kelas: ' + error.message); return; }
+
+      alert('Kelas "' + namaBaru.trim() + '" berhasil dibuat. Siswa perlu diisi manual di menu Setup > Siswa.');
+      muatKelasSetup();
+      muatDaftarKelasGlobal();
     }
 
     async function muatDaftarKelasGlobal() {
