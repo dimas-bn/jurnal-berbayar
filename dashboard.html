@@ -1496,9 +1496,13 @@
     <section id="panel-testimoni" class="page" style="display:none;">
       <p class="eyebrow">Bantu Guru Lain Percaya</p>
       <p class="tanggal-hari">Beri Testimoni</p>
-      <p style="font-size:13px; color:var(--muted); margin:8px 0 16px;">
+      <p style="font-size:13px; color:var(--muted); margin:8px 0 10px;">
         Testimoni Anda bisa ditampilkan di Website Resmi JMO (setelah disetujui oleh Pak Dimas) untuk membantu guru lainnya percaya untuk mencoba aplikasi ini.
       </p>
+      <p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px 10px; border-radius:6px; margin:0 0 16px;">
+        📌 Untuk menjaga kualitas testimoni, setiap guru hanya bisa mengirim <strong>1 testimoni per bulan</strong>, dan tidak bisa kirim baru selama testimoni sebelumnya masih menunggu persetujuan.
+      </p>
+      <div id="testimoniCooldownBox" style="display:none;"></div>
 
       <label for="testiNamaTampilan">Nama & Info yang ditampilkan publik</label>
       <input type="text" id="testiNamaTampilan" placeholder="mis. Bu Sarah, Guru SMA Negeri 1 IKN">
@@ -3780,13 +3784,22 @@
 
     async function muatTestimoniSaya() {
       const box = document.getElementById('testimoniSayaList');
+      const cooldownBox = document.getElementById('testimoniCooldownBox');
+      const btnKirim = document.getElementById('btnKirimTestimoni');
+
       const { data: { user } } = await db.auth.getUser();
       const { data, error } = await db.from('testimoni')
         .select('*')
         .eq('guru_id', user.id)
         .order('dibuat_pada', { ascending: false });
 
-      if (error || !data || data.length === 0) { box.innerHTML = ''; return; }
+      if (error || !data || data.length === 0) {
+        box.innerHTML = '';
+        cooldownBox.style.display = 'none';
+        btnKirim.disabled = false;
+        btnKirim.style.opacity = '1';
+        return;
+      }
 
       const labelStatus = { pending: '⏳ Menunggu persetujuan', approved: '✅ Disetujui & tampil di landing page', rejected: '❌ Tidak disetujui' };
       box.innerHTML = data.map(t => `
@@ -3795,6 +3808,29 @@
           <p style="font-size:13.5px; margin:0;">${t.teks}</p>
         </div>
       `).join('');
+
+      const terakhir = data[0];
+      const batasCooldown = new Date(terakhir.dibuat_pada);
+      batasCooldown.setDate(batasCooldown.getDate() + 30);
+      const sekarang = new Date();
+
+      if (terakhir.status === 'pending') {
+        cooldownBox.style.display = 'block';
+        cooldownBox.style.cssText = 'display:block; font-size:12.5px; background:#FBEFD9; color:#8a6d1f; padding:8px 10px; border-radius:6px; margin-bottom:16px;';
+        cooldownBox.textContent = '⏳ Testimoni Anda sebelumnya masih menunggu persetujuan. Kirim baru bisa dilakukan setelah itu diproses.';
+        btnKirim.disabled = true;
+        btnKirim.style.opacity = '0.5';
+      } else if (batasCooldown > sekarang) {
+        cooldownBox.style.display = 'block';
+        cooldownBox.style.cssText = 'display:block; font-size:12.5px; background:#FBEFD9; color:#8a6d1f; padding:8px 10px; border-radius:6px; margin-bottom:16px;';
+        cooldownBox.textContent = `🔒 Anda sudah kirim testimoni bulan ini. Bisa kirim lagi mulai ${batasCooldown.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`;
+        btnKirim.disabled = true;
+        btnKirim.style.opacity = '0.5';
+      } else {
+        cooldownBox.style.display = 'none';
+        btnKirim.disabled = false;
+        btnKirim.style.opacity = '1';
+      }
     }
 
     // ================== ADMIN: KELOLA TESTIMONI ==================
