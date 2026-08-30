@@ -1428,9 +1428,9 @@
 
       <p class="stat-section-title">Tautan Penting</p>
       <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
-        <a href="https://jurnalmengajar.web.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none;">🌐 Buka Aplikasi JMO</a>
-        <a href="https://www.dimasbn.my.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#fff; color:var(--ink); border:1px solid var(--ink);">👤 Website Pak Dimas</a>
-        <a href="https://dimasbn.my.id/p/paket-harga-jmo.html" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#fff; color:var(--ink); border:1px solid var(--ink);">💳 Paket & Harga JMO</a>
+        <a href="https://jurnalmengajar.web.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none;">🌐 Buka Website Resmi Aplikasi Jurnal Mengajar Online (JMO)</a>
+        <a href="https://www.dimasbn.my.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#2A429A; color:#fff; border:1px solid #2A429A;">👤 Website Resmi Pak Dimas BN</a>
+        <a href="https://www.dimasbn.my.id/p/paket-harga-jmo.html" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#A6493C; color:#fff; border:1px solid #A6493C;">💳 Paket & Harga JMO</a>
       </div>
 
       <button type="button" class="btn-tambah" id="btnBagikanJMO" style="width:100%; margin-bottom:24px;">📤 Bagikan JMO ke Rekan Guru</button>
@@ -3558,7 +3558,7 @@
       }
 
       const { data: { user } } = await db.auth.getUser();
-      const { error } = await db.from('Masukan Pengguna').insert({
+      const { error } = await db.from('masukan_pengguna').insert({
         guru_id: user.id,
         kategori: kategori,
         pesan: pesan
@@ -3566,8 +3566,9 @@
 
       statusEl.style.display = 'block';
       if (error) {
+        console.error('Gagal kirim masukan:', error);
         statusEl.style.color = 'var(--red)';
-        statusEl.textContent = 'Gagal mengirim, coba lagi ya.';
+        statusEl.textContent = 'Gagal mengirim: ' + (error.message || 'coba lagi ya.');
       } else {
         statusEl.style.color = 'var(--accent-dark)';
         statusEl.textContent = 'Terima kasih! Masukan kamu sudah terkirim.';
