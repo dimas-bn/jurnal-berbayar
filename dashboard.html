@@ -846,7 +846,10 @@
       <img src="/icon-192.png" alt="Jurnal Mengajar">
       <div>
         <h1>Jurnal Mengajar <span class="badge-online" id="badgeOnline">Online</span></h1>
-        <div class="info" id="infoGuru">Memuat…</div>
+        <div class="info" style="display:flex; align-items:center; gap:6px;">
+          <span id="infoGuru">Memuat…</span>
+          <button type="button" onclick="bukaModalGantiNama(false)" title="Ubah nama" style="background:none; border:none; color:#C9D6CC; cursor:pointer; font-size:12px; padding:2px; line-height:1; flex-shrink:0;">✏️</button>
+        </div>
       </div>
     </div>
     <button class="btn-keluar" onclick="keluar()">Keluar</button>
@@ -880,6 +883,19 @@
       </div>
       <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Butuh bantuan? <a href="https://t.me/+2uZH5Az4p600Nzll" target="_blank" rel="noopener" style="color:var(--accent-dark);">Gabung grup komunitas</a></p>
       <button type="button" onclick="keluar()" style="background:none; border:none; color:var(--muted); font-size:13px; text-decoration:underline; cursor:pointer;">Keluar</button>
+    </div>
+  </div>
+
+  <!-- Modal: Lengkapi / Ubah Nama -->
+  <div id="modalGantiNama" style="display:none; position:fixed; inset:0; background:rgba(20,30,24,0.55); z-index:200; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--paper); border-radius:14px; max-width:360px; width:100%; padding:26px 22px; text-align:center; font-family:'IBM Plex Sans',sans-serif;">
+      <div style="font-size:34px; margin-bottom:6px;">✍️</div>
+      <h2 id="judulModalNama" style="font-family:'Fraunces',serif; font-style:italic; color:var(--ink); margin:0 0 8px; font-size:20px;">Lengkapi Nama Anda</h2>
+      <p id="subJudulModalNama" style="color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 16px;">Nama ini akan dipakai pada data jurnal, rekap, dan riwayat transaksi Anda.</p>
+      <input type="text" id="inputNamaBaru" placeholder="Nama lengkap Anda" style="margin-bottom:12px; text-align:center;">
+      <div id="pesanGantiNama" style="display:none;"></div>
+      <button type="button" onclick="simpanNamaBaru()" style="width:100%; background:var(--accent-dark); color:#fff; border:none; padding:12px; border-radius:7px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; margin-top:4px;">Simpan Nama</button>
+      <button type="button" id="btnTutupModalNama" onclick="tutupModalGantiNama()" style="margin-top:10px; background:none; border:none; color:var(--muted); font-size:12.5px; text-decoration:underline; cursor:pointer;">Nanti saja</button>
     </div>
   </div>
 
@@ -1579,9 +1595,11 @@
         return;
       }
 
+      namaLengkapSaatIni = profil.nama_lengkap;
+      labelPaketSaatIni = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' }[profil.paket] || profil.paket;
+
       {
-        const labelPaket = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' }[profil.paket] || profil.paket;
-        let infoTeks = `${profil.nama_lengkap} · Paket ${labelPaket}`;
+        let infoTeks = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
 
         if (profil.tanggal_berakhir) {
           const berakhir = new Date(profil.tanggal_berakhir);
@@ -1589,7 +1607,7 @@
           const sisaHari = Math.ceil((berakhir - sekarang) / (1000 * 60 * 60 * 24));
 
           if (sisaHari <= 0) {
-            tampilkanOverlayExpired(labelPaket);
+            tampilkanOverlayExpired(labelPaketSaatIni);
             document.getElementById('infoGuru').textContent = infoTeks + ' (berakhir)';
             return; // hentikan pemuatan data lain, akses dikunci
           } else if (sisaHari <= 2) {
@@ -1600,10 +1618,58 @@
         document.getElementById('infoGuru').textContent = infoTeks;
       }
 
+      // Jika nama masih memakai nilai default (biasanya dari daftar via Google), minta lengkapi
+      if (namaLengkapSaatIni === 'Guru Baru') {
+        bukaModalGantiNama(true);
+      }
+
       initTanggal();
       muatDaftarKelasGlobal();
       muatJadwalGlobal();
       cekPengingatHariIni();
+    }
+
+    let namaLengkapSaatIni = '';
+    let labelPaketSaatIni = '';
+
+    function bukaModalGantiNama(otomatis) {
+      document.getElementById('judulModalNama').textContent = otomatis ? 'Satu Langkah Lagi!' : 'Ubah Nama Anda';
+      document.getElementById('subJudulModalNama').textContent = otomatis
+        ? 'Sepertinya Anda mendaftar lewat Google. Mohon lengkapi nama lengkap Anda agar data jurnal, rekap, dan transaksi tercatat dengan rapi.'
+        : 'Nama ini akan dipakai pada data jurnal, rekap, dan riwayat transaksi Anda.';
+      document.getElementById('inputNamaBaru').value = otomatis ? '' : namaLengkapSaatIni;
+      document.getElementById('pesanGantiNama').style.display = 'none';
+      document.getElementById('modalGantiNama').style.display = 'flex';
+    }
+
+    function tutupModalGantiNama() {
+      document.getElementById('modalGantiNama').style.display = 'none';
+    }
+
+    async function simpanNamaBaru() {
+      const namaBaru = document.getElementById('inputNamaBaru').value.trim();
+      const pesanEl = document.getElementById('pesanGantiNama');
+      const tampilkanPesanNama = (teks, error) => {
+        pesanEl.textContent = teks;
+        pesanEl.style.cssText = `display:block; font-size:12.5px; margin-bottom:12px; padding:9px; border-radius:6px; ${error ? 'background:#F5E3DF; color:#8F3D2D;' : 'background:#E6EEE6; color:#1E2B22;'}`;
+      };
+
+      if (!namaBaru) {
+        tampilkanPesanNama('Nama tidak boleh kosong.', true);
+        return;
+      }
+
+      const { error } = await db.from('profil_guru').update({ nama_lengkap: namaBaru }).eq('id', guruId);
+
+      if (error) {
+        tampilkanPesanNama('Gagal menyimpan: ' + escapeHtml(error.message), true);
+        return;
+      }
+
+      namaLengkapSaatIni = namaBaru;
+      document.getElementById('infoGuru').textContent = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
+      tampilkanPesanNama('✔️ Nama berhasil disimpan.', false);
+      setTimeout(tutupModalGantiNama, 900);
     }
 
     function tampilkanBannerWarning(sisaHari) {
