@@ -26,6 +26,9 @@
       --slate: #5B6B8C;
       --red: #A63D3D;
       --muted: #6E6252;
+        /* Perkuat visibilitas teks kecil/sekunder tanpa mengubah ukuran/warna besar-besaran */
+        [style*="var(--muted)"]:not([style*="font-weight"]) { font-weight: 500; }
+        .loading, .no-match, .stat-empty-note, .setup-list-item .ket { font-weight: 500; }
     }
 
     * { box-sizing: border-box; }
@@ -1220,7 +1223,7 @@
         </div>
       </div>
 
-      <label>Jam ke- <span style="font-weight:400;color:var(--muted);">(isi "sampai" hanya jika KBM lebih dari 1 JP)</span></label>
+      <label>Jam ke- <span style="font-weight:500;color:var(--muted);">(isi "sampai" hanya jika KBM lebih dari 1 JP)</span></label>
       <div class="row2">
         <div>
           <input type="number" inputmode="numeric" id="jamDari" min="1" max="12" placeholder="Dari, mis. 1">
@@ -1306,11 +1309,11 @@
         <p style="font-size:12.5px; color:var(--muted); margin:0 0 12px;">
           Atur sendiri ambang batas nilai sesuai standar KKM sekolah Anda. Nilai akan otomatis diberi warna berdasarkan 3 angka ini.
         </p>
-        <label for="kkmJeblok" style="margin-top:0;">Batas Jeblok <span style="font-weight:400;color:var(--muted);">(di bawah ini = merah)</span></label>
+        <label for="kkmJeblok" style="margin-top:0;">Batas Jeblok <span style="font-weight:500;color:var(--muted);">(di bawah ini = merah)</span></label>
         <input type="number" id="kkmJeblok" min="0" max="100" placeholder="mis. 50">
-        <label for="kkmKKM">Nilai KKM <span style="font-weight:400;color:var(--muted);">(di bawah ini = kuning, di atas = hijau)</span></label>
+        <label for="kkmKKM">Nilai KKM <span style="font-weight:500;color:var(--muted);">(di bawah ini = kuning, di atas = hijau)</span></label>
         <input type="number" id="kkmKKM" min="0" max="100" placeholder="mis. 75">
-        <label for="kkmIstimewa">Batas Istimewa <span style="font-weight:400;color:var(--muted);">(di atas ini = biru)</span></label>
+        <label for="kkmIstimewa">Batas Istimewa <span style="font-weight:500;color:var(--muted);">(di atas ini = biru)</span></label>
         <input type="number" id="kkmIstimewa" min="0" max="100" placeholder="mis. 90">
         <div style="display:flex; gap:6px; margin:14px 0;">
           <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--red); color:#fff;">Jeblok</span>
@@ -1327,7 +1330,7 @@
       <label for="nilaiKelas">Kelas</label>
       <select id="nilaiKelas"><option value="">Pilih kelas…</option></select>
 
-      <label for="namaPenilaianInput">Nama Penilaian <span style="font-weight:400;color:var(--muted);">(mis. Ulangan Harian Bab 3)</span></label>
+      <label for="namaPenilaianInput">Nama Penilaian <span style="font-weight:500;color:var(--muted);">(mis. Ulangan Harian Bab 3)</span></label>
       <input type="text" id="namaPenilaianInput" placeholder="Nama ulangan/ujian & materinya">
 
       <label for="tanggalNilai">Tanggal</label>
