@@ -190,6 +190,25 @@
     cursor: pointer;
   }
   .link-lupa:hover { color: #A6493C; text-decoration: underline; }
+
+  .checkbox-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 13px;
+  color: #5C5240;
+  line-height: 1.5;
+  }
+  .checkbox-wrap input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #A6493C;
+  }
+  .checkbox-wrap a { color: #A6493C; text-decoration: underline; }
+
   .link-kembali {
     display: inline-block;
     margin-top: 16px;
@@ -198,6 +217,7 @@
     text-decoration: none;
     cursor: pointer;
   }
+
   .link-kembali:hover { color: #1E2B22; text-decoration: underline; }
 
   /* Layar besar "Cek Email Anda" setelah daftar */
@@ -308,7 +328,17 @@
         <input type="password" id="passDaftar" placeholder="Minimal 6 karakter">
         <button type="button" class="toggle-pass" data-target="passDaftar" aria-label="Tampilkan password">👁️</button>
       </div>
-      <button class="submit" onclick="prosesDaftar()">Daftar Sekarang</button>
+
+      <label class="checkbox-wrap">
+        <input type="checkbox" id="setujuSK" onchange="cekTombolDaftar()">
+        <span>Saya menyetujui <a href="syarat-ketentuan.html" target="_blank">Syarat & Ketentuan</a> Jurnal Mengajar Online</span>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" id="setujuPromosi">
+        <span>Saya bersedia dihubungi/menerima info promo seputar JMO di kemudian hari</span>
+      </label>
+
+      <button class="submit" id="btnDaftar" onclick="prosesDaftar()" disabled>Daftar Sekarang</button>
     </div>
 
     <!-- FORM LUPA PASSWORD -->
