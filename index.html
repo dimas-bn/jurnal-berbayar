@@ -452,10 +452,20 @@
     }
   }
 
+    function cekTombolDaftar() {
+      document.getElementById('btnDaftar').disabled = !document.getElementById('setujuSK').checked;
+    }
   async function prosesDaftar() {
     const nama = document.getElementById('namaDaftar').value.trim();
     const email = document.getElementById('emailDaftar').value.trim();
     const pass = document.getElementById('passDaftar').value;
+    const setujuSK = document.getElementById('setujuSK').checked;
+    const setujuPromosi = document.getElementById('setujuPromosi').checked;
+
+    if (!setujuSK) {
+      tampilkanPesan('Anda harus menyetujui Syarat & Ketentuan terlebih dahulu.', 'error');
+      return;
+    }
 
     if (!nama || !email || !pass) {
       tampilkanPesan('Mohon lengkapi semua data.', 'error');
