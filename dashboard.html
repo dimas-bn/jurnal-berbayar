@@ -4052,7 +4052,10 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    init();
+    init().then(() => {
+      const tabDariUrl = window.location.hash.replace('#', '');
+      if (tabDariUrl) showTab(tabDariUrl);
+    });
   </script>
   <script>
     if ('serviceWorker' in navigator) {
