@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -564,3 +565,571 @@
 
 </body>
 </html>
+=======
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jurnal Mengajar Online - Masuk / Daftar</title>
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E2B22">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    background: #F6F2E4;
+    margin: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 48px 20px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #D8CDB0;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(30,43,34,0.08);
+    padding: 34px 30px;
+    width: 100%;
+    max-width: 380px;
+  }
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    color: #1E2B22;
+    font-size: 25px;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+  p.subtitle {
+    color: #5C5240;
+    font-size: 14.5px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: center;
+    margin: 0 0 22px;
+  }
+
+  /* Tombol Google */
+  .google-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    background: #fff;
+    border: 1.5px solid #D8CDB0;
+    border-radius: 8px;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: #1E2B22;
+    cursor: pointer;
+  }
+  .google-btn:hover { background: #FAF7ED; border-color: #A79E88; }
+  .google-btn svg { width: 19px; height: 19px; flex-shrink: 0; }
+  
+  .google-note {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #6E6252;
+    text-align: center;
+    margin: 8px 0 0;
+    line-height: 1.5;
+  }
+  .google-note a { color: #A6493C; text-decoration: underline; }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #8A7F68;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 18px 0;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #E3DAC4;
+  }
+  .divider span { padding: 0 12px; }
+
+  .tabs {
+    display: flex;
+    margin-bottom: 22px;
+    border-radius: 9px;
+    overflow: hidden;
+    border: 1px solid #D8CDB0;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 11px;
+    cursor: pointer;
+    background: #F6F2E4;
+    color: #5C5240;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+  .tab.active {
+    background: #1E2B22;
+    color: #F6F2E4;
+  }
+  label {
+    display: block;
+    font-size: 13.5px;
+    color: #3E3A2E;
+    font-weight: 600;
+    margin-bottom: 5px;
+    margin-top: 15px;
+  }
+  input {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid #D8CDB0;
+    border-radius: 7px;
+    font-size: 15px;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    color: #1E2B22;
+  }
+  input:focus {
+    outline: none;
+    border-color: #A6493C;
+  }
+  .pass-wrap {
+    position: relative;
+  }
+  .pass-wrap input {
+    padding-right: 44px;
+  }
+  .toggle-pass {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 17px;
+    padding: 8px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.55;
+  }
+  .toggle-pass:hover { opacity: 0.9; }
+  button.submit {
+    width: 100%;
+    margin-top: 24px;
+    padding: 13px;
+    background: #1E2B22;
+    color: #F6F2E4;
+    border: none;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 15.5px;
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+  }
+  button.submit:disabled {
+    background: #A79E88;
+    cursor: not-allowed;
+  }
+
+  /* Pesan singkat (error / info ringan) */
+  .pesan {
+    margin-top: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.55;
+    text-align: center;
+    padding: 13px 14px;
+    border-radius: 8px;
+    display: none;
+  }
+  .pesan.error { background: #F5E3DF; color: #8F3D2D; display: block; }
+  .pesan.sukses { background: #E6EEE6; color: #1E2B22; display: block; }
+
+  .form-section { display: none; }
+  .form-section.active { display: block; }
+  .link-lupa {
+    display: block;
+    text-align: right;
+    margin-top: 9px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #6E6252;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .link-lupa:hover { color: #A6493C; text-decoration: underline; }
+
+  .checkbox-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #5C5240;
+  line-height: 1.5;
+  }
+  .checkbox-wrap input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #A6493C;
+  }
+  .checkbox-wrap a { color: #A6493C; text-decoration: underline; }
+
+  .link-kembali {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #5C5240;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .link-kembali:hover { color: #1E2B22; text-decoration: underline; }
+
+  /* Layar besar "Cek Email Anda" setelah daftar */
+  .layar-cek-email {
+    display: none;
+    text-align: center;
+  }
+  .layar-cek-email.active { display: block; }
+  .layar-cek-email .ikon {
+    font-size: 52px;
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  .layar-cek-email h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+    color: #1E2B22;
+    font-size: 22px;
+    margin: 0 0 12px;
+  }
+  .layar-cek-email .instruksi {
+    background: #E6EEE6;
+    border: 1.5px solid #BFD6BF;
+    border-radius: 10px;
+    padding: 18px 16px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.6;
+    color: #1E2B22;
+    margin-bottom: 14px;
+  }
+  .layar-cek-email .instruksi .email-terdaftar {
+    display: block;
+    margin-top: 6px;
+    color: #A6493C;
+    word-break: break-all;
+  }
+  .layar-cek-email .catatan {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #5C5240;
+    line-height: 1.55;
+    margin: 0 0 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <img src="/icon-192.png" alt="Jurnal Mengajar" style="width:56px; height:56px; border-radius:14px; display:block; margin:0 auto 12px;">
+  <h1>Jurnal Mengajar Online</h1>
+
+  <!-- LAYAR "CEK EMAIL ANDA" (muncul setelah daftar berhasil) -->
+  <div id="layarCekEmail" class="layar-cek-email">
+    <div class="ikon">📬</div>
+    <h2>Satu Langkah Lagi!</h2>
+    <div class="instruksi">
+      Buka aplikasi Email Anda sekarang, lalu klik link konfirmasi yang baru saja kami kirim ke:
+      <span class="email-terdaftar" id="emailTerdaftarTeks"></span>
+    </div>
+    <p class="catatan">Belum masuk juga setelah beberapa menit? Cek folder <strong>Spam</strong> atau <strong>Promosi</strong>.</p>
+    <p class="catatan">Setelah link diklik, akun langsung aktif dan Anda bisa masuk.</p>
+    <a class="link-kembali" onclick="kembaliDariLayarCekEmail()">← Kembali ke halaman Masuk</a>
+  </div>
+
+  <!-- BAGIAN LOGIN/DAFTAR UTAMA -->
+  <div id="areaUtama">
+    <p class="subtitle" id="subtitleText">Masuk atau daftar untuk mulai mencatat jurnal mengajar Anda</p>
+
+    <button type="button" class="google-btn" id="tombolGoogle" onclick="masukGoogle()">
+      <svg viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6C29.6 35.3 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 39.6 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.6 5.6C41.4 36 44 30.6 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+      </svg>
+      Lanjutkan dengan Google
+    </button>
+    <p class="google-note">
+      Dengan melanjutkan, Anda menyetujui <a href="syarat-ketentuan.html" target="_blank">Syarat & Ketentuan</a> Jurnal Mengajar Online
+    </p>
+
+    <div class="divider" id="dividerUtama"><span>atau</span></div>
+
+    <div class="tabs" id="tabsBar">
+      <div class="tab active" id="tabMasuk" onclick="gantiTab('masuk')">Masuk</div>
+      <div class="tab" id="tabDaftar" onclick="gantiTab('daftar')">Daftar</div>
+    </div>
+
+    <!-- FORM MASUK -->
+    <div id="formMasuk" class="form-section active">
+      <label for="emailMasuk">Email</label>
+      <input type="email" id="emailMasuk" placeholder="nama@email.com">
+      <label for="passMasuk">Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="passMasuk" placeholder="Masukkan password">
+        <button type="button" class="toggle-pass" data-target="passMasuk" aria-label="Tampilkan password">👁️</button>
+      </div>
+      <a class="link-lupa" onclick="gantiTab('lupa')">Lupa password?</a>
+      <button class="submit" onclick="prosesMasuk()">Masuk</button>
+    </div>
+
+    <!-- FORM DAFTAR -->
+    <div id="formDaftar" class="form-section">
+      <label for="namaDaftar">Nama Lengkap</label>
+      <input type="text" id="namaDaftar" placeholder="Nama Anda">
+      <label for="emailDaftar">Email</label>
+      <input type="email" id="emailDaftar" placeholder="nama@email.com">
+      <label for="passDaftar">Buat Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="passDaftar" placeholder="Minimal 6 karakter">
+        <button type="button" class="toggle-pass" data-target="passDaftar" aria-label="Tampilkan password">👁️</button>
+      </div>
+
+      <label class="checkbox-wrap">
+        <input type="checkbox" id="setujuSK" onchange="cekTombolDaftar()">
+        <span>Saya menyetujui <a href="syarat-ketentuan.html" target="_blank">Syarat & Ketentuan</a> Jurnal Mengajar Online</span>
+      </label>
+      <label class="checkbox-wrap">
+        <input type="checkbox" id="setujuPromosi">
+        <span>Saya bersedia dihubungi/menerima info promo seputar JMO di kemudian hari</span>
+      </label>
+
+      <button class="submit" id="btnDaftar" onclick="prosesDaftar()" disabled>Daftar Sekarang</button>
+    </div>
+
+    <!-- FORM LUPA PASSWORD -->
+    <div id="formLupa" class="form-section">
+      <label for="emailLupa">Email Akun Anda</label>
+      <input type="email" id="emailLupa" placeholder="nama@email.com">
+      <button class="submit" onclick="prosesLupaPassword()">Kirim Link Reset Password</button>
+      <a class="link-kembali" onclick="gantiTab('masuk')">← Kembali ke halaman Masuk</a>
+    </div>
+
+    <div id="pesan" class="pesan"></div>
+  </div>
+</div>
+
+<script>
+  // ==== KONFIGURASI SUPABASE (sudah diisi otomatis) ====
+  const SUPABASE_URL = "https://eziszpzxszxurvqcsikj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6aXN6cHp4c3p4dXJ2cWNzaWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyNjMzNTYsImV4cCI6MjEwMTgzOTM1Nn0.q9YdOK9ph_WqDYhPfNVTqTVdKuMPLPFLicLBsOg5ivQ";
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Kalau sudah pernah login sebelumnya, langsung ke dashboard
+  (async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) window.location.href = "dashboard.html";
+  })();
+
+  document.querySelectorAll('.toggle-pass').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const tampil = input.type === 'text';
+      input.type = tampil ? 'password' : 'text';
+      btn.textContent = tampil ? '👁️' : '🙈';
+      btn.setAttribute('aria-label', tampil ? 'Tampilkan password' : 'Sembunyikan password');
+    });
+  });
+
+  function gantiTab(tab) {
+    document.getElementById('tabMasuk').classList.toggle('active', tab === 'masuk');
+    document.getElementById('tabDaftar').classList.toggle('active', tab === 'daftar');
+    document.getElementById('formMasuk').classList.toggle('active', tab === 'masuk');
+    document.getElementById('formDaftar').classList.toggle('active', tab === 'daftar');
+    document.getElementById('formLupa').classList.toggle('active', tab === 'lupa');
+    document.getElementById('tabsBar').style.display = (tab === 'lupa') ? 'none' : 'flex';
+    document.getElementById('tombolGoogle').style.display = (tab === 'lupa') ? 'none' : 'flex';
+    document.getElementById('dividerUtama').style.display = (tab === 'lupa') ? 'none' : 'flex';
+    document.getElementById('subtitleText').textContent = (tab === 'lupa')
+      ? 'Masukkan email akun Anda, kami akan kirimkan link untuk membuat password baru'
+      : 'Masuk atau daftar untuk mulai mencatat jurnal mengajar Anda';
+    sembunyikanPesan();
+  }
+
+  function tampilkanPesan(teks, jenis) {
+    const el = document.getElementById('pesan');
+    el.textContent = teks;
+    el.className = 'pesan ' + jenis;
+  }
+
+  function sembunyikanPesan() {
+    const el = document.getElementById('pesan');
+    el.className = 'pesan';
+    el.textContent = '';
+  }
+
+  // Tampilkan layar besar "Cek Email Anda" menggantikan form, supaya tidak mungkin terlewat
+  function tampilkanLayarCekEmail(email) {
+    document.getElementById('emailTerdaftarTeks').textContent = email;
+    document.getElementById('areaUtama').style.display = 'none';
+    document.getElementById('layarCekEmail').classList.add('active');
+  }
+
+  function kembaliDariLayarCekEmail() {
+    document.getElementById('layarCekEmail').classList.remove('active');
+    document.getElementById('areaUtama').style.display = 'block';
+    gantiTab('masuk');
+  }
+
+  function terjemahkanError(pesanAsli) {
+    const kamus = {
+      'Email not confirmed': 'Email belum terkonfirmasi. Cek inbox/spam email Anda dan klik link konfirmasinya terlebih dahulu.',
+      'Invalid login credentials': 'Email atau password salah.',
+      'User already registered': 'Email ini sudah terdaftar. Coba masuk lewat tab Masuk.',
+      'Password should be at least 6 characters': 'Password minimal 6 karakter.',
+      'Unable to validate email address: invalid format': 'Format email tidak valid.',
+      'For security purposes, you can only request this after': 'Terlalu banyak percobaan. Mohon tunggu sebentar lalu coba lagi.',
+      'Email address': 'Alamat email tidak valid.',
+      'Signup requires a valid password': 'Password wajib diisi dengan benar.',
+      'Anonymous sign-ins are disabled': 'Metode masuk ini tidak diaktifkan.',
+      'User not found': 'Akun dengan email ini tidak ditemukan.',
+      'Email rate limit exceeded': 'Terlalu banyak permintaan email. Mohon tunggu beberapa saat lalu coba lagi.',
+      'Token has expired or is invalid': 'Link/kode ini sudah kedaluwarsa atau tidak valid. Coba ulangi prosesnya dari awal.',
+      'New password should be different from the old password': 'Password baru harus berbeda dari password lama.',
+      'Failed to fetch': 'Gagal terhubung ke server. Periksa koneksi internet Anda.',
+      'network': 'Gagal terhubung ke server. Periksa koneksi internet Anda.'
+    };
+    for (const kunci in kamus) {
+      if (pesanAsli.includes(kunci)) return kamus[kunci];
+    }
+    return pesanAsli;
+  }
+
+  async function masukGoogle() {
+    sembunyikanPesan();
+    const { error } = await db.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'https://member.jurnalmengajar.web.id/dashboard.html' }
+    });
+    if (error) {
+      tampilkanPesan('Gagal masuk dengan Google: ' + terjemahkanError(error.message), 'error');
+    }
+  }
+
+    function cekTombolDaftar() {
+      document.getElementById('btnDaftar').disabled = !document.getElementById('setujuSK').checked;
+    }
+  async function prosesDaftar() {
+    const nama = document.getElementById('namaDaftar').value.trim();
+    const email = document.getElementById('emailDaftar').value.trim();
+    const pass = document.getElementById('passDaftar').value;
+    const setujuSK = document.getElementById('setujuSK').checked;
+    const setujuPromosi = document.getElementById('setujuPromosi').checked;
+
+    if (!setujuSK) {
+      tampilkanPesan('Anda harus menyetujui Syarat & Ketentuan terlebih dahulu.', 'error');
+      return;
+    }
+
+    if (!nama || !email || !pass) {
+      tampilkanPesan('Mohon lengkapi semua data.', 'error');
+      return;
+    }
+    if (pass.length < 6) {
+      tampilkanPesan('Password minimal 6 karakter.', 'error');
+      return;
+    }
+
+    tampilkanPesan('Memproses pendaftaran...', 'sukses');
+
+    const { data, error } = await db.auth.signUp({
+      email: email,
+      password: pass,
+      options: {
+        data: { nama_lengkap: nama }
+      }
+    });
+
+    if (error) {
+      tampilkanPesan('Gagal daftar: ' + terjemahkanError(error.message), 'error');
+      return;
+    }
+
+    // Ganti seluruh area jadi layar besar "Cek Email Anda" agar tidak terlewat
+    tampilkanLayarCekEmail(email);
+  }
+
+  async function prosesLupaPassword() {
+    const email = document.getElementById('emailLupa').value.trim();
+
+    if (!email) {
+      tampilkanPesan('Mohon isi email akun Anda.', 'error');
+      return;
+    }
+
+    tampilkanPesan('Mengirim link reset password...', 'sukses');
+
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://member.jurnalmengajar.web.id/reset-password.html'
+    });
+
+    if (error) {
+      tampilkanPesan('Gagal mengirim: ' + terjemahkanError(error.message), 'error');
+      return;
+    }
+
+    tampilkanPesan('Link reset password sudah dikirim! Cek inbox/spam email Anda, lalu klik link di dalamnya untuk membuat password baru.', 'sukses');
+  }
+
+  async function prosesMasuk() {
+    const email = document.getElementById('emailMasuk').value.trim();
+    const pass = document.getElementById('passMasuk').value;
+
+    if (!email || !pass) {
+      tampilkanPesan('Mohon isi email dan password.', 'error');
+      return;
+    }
+
+    tampilkanPesan('Memproses...', 'sukses');
+
+    const { data, error } = await db.auth.signInWithPassword({
+      email: email,
+      password: pass
+    });
+
+    if (error) {
+      tampilkanPesan('Gagal masuk: ' + terjemahkanError(error.message), 'error');
+      return;
+    }
+
+    tampilkanPesan('Berhasil masuk! Mengarahkan ke dashboard...', 'sukses');
+    window.location.href = "dashboard.html";
+  }
+</script>
+
+</body>
+</html>
+>>>>>>> 608f95b10807593b850c0a3b1525e4266ec8e208
