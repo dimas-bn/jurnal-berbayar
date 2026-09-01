@@ -1110,7 +1110,7 @@
     <!-- ===== TAB: SETUP (Kelas / Siswa / Jadwal) ===== -->
     <section id="panel-setup" class="page" style="display:none;">
       <p class="eyebrow">Data awal</p>
-      <p class="tanggal-hari">Setup Kelas, Siswa &amp; Jadwal</p>
+      <p class="tanggal-hari">Setup Kelas, Siswa, Jadwal &amp; Periode</p>
 
       <div class="subtab-bar">
         <button class="subtab-btn active" id="subtab-kelas" onclick="showSubtab('kelas')">Kelas</button>
@@ -1183,6 +1183,7 @@
         <div id="listJadwal"></div>
         <p class="empty-hint" id="jadwalKosong">Belum ada jadwal.</p>
       </div>
+
       <!-- SUB: PERIODE (Semester & Tahun Ajaran) -->
       <div id="sub-periode" style="display:none;">
         <div id="infoPeriodeAktif" style="background:var(--paper); border-radius:12px; padding:16px; margin-bottom:18px; text-align:center;">
@@ -1190,15 +1191,26 @@
         </div>
 
         <p class="jadwal-label">Mulai Semester Baru</p>
-        <p style="color:var(--muted); font-size:13px; margin:4px 0 12px;">
-          Jurnal, absensi, nilai, dan catatan persiapan semester ini akan dipindah ke arsip. Kelas, Siswa, dan Jadwal tidak berubah.
+        <p style="color:var(--muted); font-size:13px; margin:4px 0 10px;">
+          Gunakan ini saat semester berjalan sudah selesai (misal Ganjil → Genap), dalam tahun ajaran yang sama.
         </p>
-        <button type="button" class="entry-btn" onclick="mulaiSemesterBaru()" style="width:100%; margin-bottom:24px;">📁 Mulai Semester Baru</button>
+        <ul style="color:var(--muted); font-size:13px; line-height:1.7; margin:0 0 12px; padding-left:20px;">
+          <li>Jurnal, Absensi, Nilai, dan Catatan Persiapan semester ini akan <b>dipindah ke arsip</b> (tidak dihapus, masih bisa diakses selama tahun ajaran ini berjalan)</li>
+          <li>Kelas, Siswa, dan Jadwal <b>tidak berubah sama sekali</b></li>
+          <li>Anda akan diminta memberi nama semester baru (misal "Genap"), lalu bisa langsung mulai isi jurnal dari kosong</li>
+        </ul>
+        <button type="button" class="entry-btn" onclick="mulaiSemesterBaru()" style="width:100%; margin-bottom:24px; background:#D69C36; color:#fff; border-color:#D69C36;">📁 Mulai Semester Baru</button>
 
         <p class="jadwal-label" style="color:#B33A3A;">Mulai Tahun Ajaran Baru</p>
-        <p style="color:var(--muted); font-size:13px; margin:4px 0 12px;">
-          ⚠️ Kelas, Siswa, dan Jadwal ikut diarsipkan — Anda mulai dari nol. Arsip tahun ajaran lama akan terhapus permanen 7 hari setelah ini (Anda akan diingatkan lewat email).
+        <p style="color:var(--muted); font-size:13px; margin:4px 0 10px;">
+          Gunakan ini saat memasuki tahun ajaran baru sepenuhnya (misal 2026/2027 → 2027/2028).
         </p>
+        <ul style="color:#B33A3A; font-size:13px; line-height:1.7; margin:0 0 12px; padding-left:20px;">
+          <li>⚠️ <b>Kelas, Siswa, dan Jadwal ikut diarsipkan</b> — Anda akan mulai dari kosong sepenuhnya, perlu setup ulang</li>
+          <li>⚠️ Seluruh arsip tahun ajaran yang baru saja ditutup (termasuk arsip semester-semester di dalamnya) akan <b>dihapus permanen dalam 7 hari</b></li>
+          <li>Anda akan diingatkan lewat email 7 hari dan 1 hari sebelum penghapusan — unduh/backup data yang masih dibutuhkan sebelum itu</li>
+          <li>Setelah dikonfirmasi, aksi ini <b>tidak bisa dibatalkan</b></li>
+        </ul>
         <button type="button" class="entry-btn" onclick="mulaiTahunAjaranBaru()" style="width:100%; background:#B33A3A; color:#fff; border-color:#B33A3A;">🗓️ Mulai Tahun Ajaran Baru</button>
       </div>
     </section>
@@ -1907,7 +1919,7 @@
     }
 
     async function muatPeriodeSetup() {
-      const { data: ta } = await db.from('tahun_ajaran').select('nama').eq('guru_id', guruId).eq('aktif', true).single();
+      const { data: ta } = await db.from('tahun_ajaran').select('id, nama').eq('guru_id', guruId).eq('aktif', true).single();
       const { data: sem } = await db.from('semester').select('nama, tahun_ajaran_id').eq('aktif', true)
         .eq('tahun_ajaran_id', ta ? ta.id : null).single();
       document.getElementById('infoPeriodeAktif').innerHTML =
