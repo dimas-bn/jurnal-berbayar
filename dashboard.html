@@ -1116,6 +1116,7 @@
         <button class="subtab-btn active" id="subtab-kelas" onclick="showSubtab('kelas')">Kelas</button>
         <button class="subtab-btn" id="subtab-siswa" onclick="showSubtab('siswa')">Siswa</button>
         <button class="subtab-btn" id="subtab-jadwal" onclick="showSubtab('jadwal')">Jadwal</button>
+        <button class="subtab-btn" id="subtab-periode" onclick="showSubtab('periode')">Periode</button>
       </div>
 
       <!-- SUB: KELAS -->
@@ -1181,6 +1182,24 @@
         <button type="button" class="entry-btn" onclick="exportJadwalExcel()" style="width:100%; margin-bottom:18px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Semua Data (Excel)</button>
         <div id="listJadwal"></div>
         <p class="empty-hint" id="jadwalKosong">Belum ada jadwal.</p>
+      </div>
+      <!-- SUB: PERIODE (Semester & Tahun Ajaran) -->
+      <div id="sub-periode" style="display:none;">
+        <div id="infoPeriodeAktif" style="background:var(--paper); border-radius:12px; padding:16px; margin-bottom:18px; text-align:center;">
+          Memuat info periode...
+        </div>
+
+        <p class="jadwal-label">Mulai Semester Baru</p>
+        <p style="color:var(--muted); font-size:13px; margin:4px 0 12px;">
+          Jurnal, absensi, nilai, dan catatan persiapan semester ini akan dipindah ke arsip. Kelas, Siswa, dan Jadwal tidak berubah.
+        </p>
+        <button type="button" class="entry-btn" onclick="mulaiSemesterBaru()" style="width:100%; margin-bottom:24px;">📁 Mulai Semester Baru</button>
+
+        <p class="jadwal-label" style="color:#B33A3A;">Mulai Tahun Ajaran Baru</p>
+        <p style="color:var(--muted); font-size:13px; margin:4px 0 12px;">
+          ⚠️ Kelas, Siswa, dan Jadwal ikut diarsipkan — Anda mulai dari nol. Arsip tahun ajaran lama akan terhapus permanen 7 hari setelah ini (Anda akan diingatkan lewat email).
+        </p>
+        <button type="button" class="entry-btn" onclick="mulaiTahunAjaranBaru()" style="width:100%; background:#B33A3A; color:#fff; border-color:#B33A3A;">🗓️ Mulai Tahun Ajaran Baru</button>
       </div>
     </section>
 
@@ -1799,13 +1818,14 @@
     let subtabAktif = 'kelas';
     function showSubtab(nama) {
       subtabAktif = nama;
-      ['kelas','siswa','jadwal'].forEach(n => {
+      ['kelas','siswa','jadwal','periode'].forEach(n => {
         document.getElementById('sub-' + n).style.display = (n === nama) ? 'block' : 'none';
         document.getElementById('subtab-' + n).classList.toggle('active', n === nama);
       });
       if (nama === 'kelas') muatKelasSetup();
       if (nama === 'siswa') muatSiswa();
       if (nama === 'jadwal') muatJadwalSetup();
+      if (nama === 'periode') muatPeriodeSetup();
     }
 
     // ================== SETUP: KELAS ==================
@@ -1884,6 +1904,43 @@
       alert('Kelas "' + namaBaru.trim() + '" berhasil dibuat. Siswa perlu diisi manual di menu Setup > Siswa.');
       muatKelasSetup();
       muatDaftarKelasGlobal();
+    }
+
+    async function muatPeriodeSetup() {
+      const { data: ta } = await db.from('tahun_ajaran').select('nama').eq('guru_id', guruId).eq('aktif', true).single();
+      const { data: sem } = await db.from('semester').select('nama, tahun_ajaran_id').eq('aktif', true)
+        .eq('tahun_ajaran_id', ta ? ta.id : null).single();
+      document.getElementById('infoPeriodeAktif').innerHTML =
+        `<b>Tahun Ajaran Aktif:</b> ${ta ? escapeHtml(ta.nama) : '-'}<br><b>Semester Aktif:</b> ${sem ? escapeHtml(sem.nama) : '-'}`;
+    }
+
+    async function mulaiSemesterBaru() {
+      const namaBaru = prompt('Nama semester baru (mis. "Genap"):');
+      if (!namaBaru || !namaBaru.trim()) return;
+      if (!confirm(`Jurnal, absensi, nilai, dan catatan semester ini akan dipindah ke arsip.\nLanjutkan mulai semester "${namaBaru.trim()}"?`)) return;
+      const konfirmasi = prompt('Ketik ARSIPKAN untuk melanjutkan:');
+      if (konfirmasi !== 'ARSIPKAN') { alert('Dibatalkan.'); return; }
+
+      const { error } = await db.rpc('arsipkan_semester', { nama_semester_baru: namaBaru.trim() });
+      if (error) { alert('Gagal: ' + error.message); return; }
+      alert('Semester baru berhasil dimulai.');
+      muatPeriodeSetup();
+    }
+
+    async function mulaiTahunAjaranBaru() {
+      const namaTA = prompt('Nama tahun ajaran baru (mis. "2027/2028"):');
+      if (!namaTA || !namaTA.trim()) return;
+      const namaSem = prompt('Nama semester pertama (mis. "Ganjil"):');
+      if (!namaSem || !namaSem.trim()) return;
+      if (!confirm(`⚠️ Kelas, Siswa, Jadwal, dan semua konten akan diarsipkan dan TERHAPUS PERMANEN dalam 7 hari.\nAnda mulai dari NOL untuk tahun ajaran "${namaTA.trim()}".\nYakin lanjutkan?`)) return;
+      const konfirmasi = prompt('Ketik TAHUN AJARAN BARU untuk melanjutkan:');
+      if (konfirmasi !== 'TAHUN AJARAN BARU') { alert('Dibatalkan.'); return; }
+
+      const { error } = await db.rpc('arsipkan_tahun_ajaran', { nama_tahun_ajaran_baru: namaTA.trim(), nama_semester_baru: namaSem.trim() });
+      if (error) { alert('Gagal: ' + error.message); return; }
+      alert('Tahun ajaran baru berhasil dimulai. Kelas, Siswa, dan Jadwal sudah kosong — silakan diisi ulang.');
+      muatKelasSetup(); muatDaftarKelasGlobal();
+      muatPeriodeSetup();
     }
 
     async function muatDaftarKelasGlobal() {
