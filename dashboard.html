@@ -2520,6 +2520,9 @@
     let semesterAktifIdRiwayat = null;
 
     async function muatDropdownSemesterRiwayat() {
+      const sel = document.getElementById('filterSemesterRiwayat');
+      const nilaiSekarang = sel.value; // simpan pilihan user sebelum di-refresh
+
       const { data } = await db.from('semester')
         .select('id, nama, aktif, dibuat_pada, tahun_ajaran:tahun_ajaran_id (nama)')
         .order('dibuat_pada', { ascending: false });
@@ -2527,11 +2530,13 @@
       const aktif = daftarSemesterRiwayat.find(s => s.aktif);
       semesterAktifIdRiwayat = aktif ? aktif.id : null;
 
-      const sel = document.getElementById('filterSemesterRiwayat');
       sel.innerHTML = daftarSemesterRiwayat.map(s =>
         `<option value="${s.id}">${escapeHtml(s.nama)} — ${escapeHtml(s.tahun_ajaran?.nama || '')}${s.aktif ? ' (Aktif)' : ' (Arsip)'}</option>`
       ).join('');
-      if (semesterAktifIdRiwayat) sel.value = semesterAktifIdRiwayat;
+
+      // Pertahankan pilihan yang sudah dipilih user; kalau belum pernah pilih, baru default ke Aktif
+      const pilihanMasihAda = daftarSemesterRiwayat.some(s => s.id === nilaiSekarang);
+      sel.value = pilihanMasihAda ? nilaiSekarang : (semesterAktifIdRiwayat || '');
     }
 
     async function muatRiwayat() {
