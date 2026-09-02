@@ -1299,7 +1299,13 @@
     <section id="panel-riwayat" class="page" style="display:none;">
       <p class="eyebrow">Catatan tersimpan</p>
       <p class="tanggal-hari">Riwayat Jurnal</p>
-
+      <div style="margin-bottom:14px;">
+        <label for="filterSemesterRiwayat" style="font-size:12.5px; color:var(--muted); display:block; margin-bottom:4px;">Semester</label>
+        <select id="filterSemesterRiwayat" style="width:100%;"></select>
+      </div>
+      <p id="infoModeArsip" style="display:none; background:#FFF3CD; color:#7A5C00; border-radius:8px; padding:10px 12px; font-size:13px; margin:0 0 14px;">
+        📁 Anda melihat arsip semester ini (hanya bisa dilihat & diexport, tidak bisa diedit). Arsip akan terhapus otomatis 7 hari setelah semester ini diarsipkan — segera export jika masih dibutuhkan.
+      </p>
       <a id="linkExportExcel" href="#" target="_blank" class="print-btn export-link">📥 Export Semua Data (Excel)</a>
       <button type="button" id="btnExportKelasRiwayat" class="entry-btn" style="width:100%; margin-top:10px; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export Kelas Ini (Excel)</button>
       <button type="button" id="btnToggleSampah" class="entry-btn" style="margin:14px 0 4px;">🗑️ Sampah</button>
@@ -2509,8 +2515,38 @@
 
     // ================== RIWAYAT ==================
     let riwayatData = [];
+    let modeArsipRiwayat = false;
+    let daftarSemesterRiwayat = [];
+    let semesterAktifIdRiwayat = null;
+
+    async function muatDropdownSemesterRiwayat() {
+      const { data } = await db.from('semester')
+        .select('id, nama, aktif, dibuat_pada, tahun_ajaran:tahun_ajaran_id (nama)')
+        .order('dibuat_pada', { ascending: false });
+      daftarSemesterRiwayat = data || [];
+      const aktif = daftarSemesterRiwayat.find(s => s.aktif);
+      semesterAktifIdRiwayat = aktif ? aktif.id : null;
+
+      const sel = document.getElementById('filterSemesterRiwayat');
+      sel.innerHTML = daftarSemesterRiwayat.map(s =>
+        `<option value="${s.id}">${escapeHtml(s.nama)} — ${escapeHtml(s.tahun_ajaran?.nama || '')}${s.aktif ? ' (Aktif)' : ' (Arsip)'}</option>`
+      ).join('');
+      if (semesterAktifIdRiwayat) sel.value = semesterAktifIdRiwayat;
+    }
 
     async function muatRiwayat() {
+      await muatDropdownSemesterRiwayat();
+      const selectedId = document.getElementById('filterSemesterRiwayat').value;
+      modeArsipRiwayat = !!selectedId && selectedId !== semesterAktifIdRiwayat;
+      document.getElementById('infoModeArsip').style.display = modeArsipRiwayat ? 'block' : 'none';
+      document.getElementById('btnExportKelasRiwayat').style.display = modeArsipRiwayat ? 'none' : '';
+      document.getElementById('btnToggleSampah').style.display = modeArsipRiwayat ? 'none' : '';
+
+      if (modeArsipRiwayat) { await muatRiwayatArsip(selectedId); }
+      else { await muatRiwayatAktif(); }
+    }
+
+    async function muatRiwayatAktif() {
       const el = document.getElementById('riwayatList');
       el.innerHTML = '<p class="loading">Memuat riwayat…</p>';
       const { data, error } = await db.from('jurnal')
@@ -2525,6 +2561,40 @@
         const d = new Date(j.tanggal + 'T00:00:00');
         return {
           id: j.id, kelas: j.kelas?.nama_kelas || '-', kelasId: j.kelas_id,
+          tanggalISO: j.tanggal, tanggal: d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear(),
+          hari: j.hari, jamKe: j.jam_ke, materi: j.materi, rekap
+        };
+      });
+      isiFilterKelas();
+      renderRiwayatFiltered();
+    }
+
+    async function muatRiwayatArsip(semesterId) {
+      const el = document.getElementById('riwayatList');
+      el.innerHTML = '<p class="loading">Memuat arsip…</p>';
+
+      const { data: jurnalArsip, error } = await db.from('arsip_jurnal')
+        .select('id, tanggal, hari, jam_ke, materi, kelas_id')
+        .eq('guru_id', guruId).eq('semester_id', semesterId)
+        .order('tanggal', { ascending: false }).limit(500);
+      if (error) { el.innerHTML = '<p class="empty-hint">Gagal memuat arsip: ' + escapeHtml(error.message) + '</p>'; return; }
+
+      const idJurnal = (jurnalArsip || []).map(j => j.id);
+      let absensiArsip = [];
+      if (idJurnal.length) {
+        const { data } = await db.from('arsip_absensi').select('jurnal_id, status').in('jurnal_id', idJurnal);
+        absensiArsip = data || [];
+      }
+      const { data: kelasAktif } = await db.from('kelas').select('id, nama_kelas');
+      const { data: kelasArsip } = await db.from('arsip_kelas').select('id, nama_kelas').eq('guru_id', guruId);
+      const petaKelas = new Map([...(kelasAktif || []), ...(kelasArsip || [])].map(k => [k.id, k.nama_kelas]));
+
+      riwayatData = (jurnalArsip || []).map(j => {
+        const rekap = { Hadir: 0, Izin: 0, Sakit: 0, Dispensasi: 0, Alpa: 0 };
+        absensiArsip.filter(a => a.jurnal_id === j.id).forEach(a => { if (rekap[a.status] !== undefined) rekap[a.status]++; });
+        const d = new Date(j.tanggal + 'T00:00:00');
+        return {
+          id: j.id, kelas: petaKelas.get(j.kelas_id) || '(kelas sudah dihapus)', kelasId: j.kelas_id,
           tanggalISO: j.tanggal, tanggal: d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear(),
           hari: j.hari, jamKe: j.jam_ke, materi: j.materi, rekap
         };
@@ -2560,16 +2630,17 @@
         <div class="entry-top"><span class="entry-date">${e.hari}, ${e.tanggal}</span><span class="entry-kelas">${escapeHtml(e.kelas)} · Jam ke-${e.jamKe}</span></div>
         <div class="entry-materi">${escapeHtml(e.materi || '(tanpa catatan materi)')}</div>
         <div class="rekap-chips">${['Hadir','Izin','Sakit','Dispensasi','Alpa'].map(st => `<span class="chip ${st}">${st} ${e.rekap[st] || 0}</span>`).join('')}</div>
-        <div class="entry-actions">
+        ${modeArsipRiwayat ? '' : `<div class="entry-actions">
           <button type="button" class="entry-btn" data-action="salin-materi" data-id="${e.id}">📋 Salin Materi</button>
           <button type="button" class="entry-btn" data-action="edit" data-id="${e.id}">Edit</button>
           <button type="button" class="entry-btn danger" data-action="hapus" data-id="${e.id}">Hapus</button>
-        </div></div>`).join('');
+        </div>`}</div>`).join('');
     }
 
     document.getElementById('filterKelas').addEventListener('change', renderRiwayatFiltered);
     document.getElementById('filterDari').addEventListener('change', renderRiwayatFiltered);
     document.getElementById('filterSampai').addEventListener('change', renderRiwayatFiltered);
+    document.getElementById('filterSemesterRiwayat').addEventListener('change', muatRiwayat);
     document.getElementById('btnResetFilter').addEventListener('click', () => {
       document.getElementById('filterKelas').value = '';
       document.getElementById('filterDari').value = '';
@@ -2894,22 +2965,52 @@
       link.classList.add('disabled');
       link.textContent = '⏳ Menyiapkan file…';
 
-      const { data } = await db.from('jurnal')
-        .select('tanggal, hari, jam_ke, mapel, materi, kelas:kelas_id (nama_kelas), absensi (status, keterangan, poin, siswa:siswa_id (nama_siswa))')
-        .eq('guru_id', guruId).is('dihapus_pada', null).order('tanggal');
+      let baris = [['Tanggal','Hari','Jam Ke','Kelas','Mapel','Materi','Nama Siswa','Status','Keterangan','Poin']];
 
-      const baris = [['Tanggal','Hari','Jam Ke','Kelas','Mapel','Materi','Nama Siswa','Status','Keterangan','Poin']];
-      (data || []).forEach(j => {
-        (j.absensi || []).forEach(a => {
-          baris.push([j.tanggal, j.hari, j.jam_ke, j.kelas?.nama_kelas || '', j.mapel || '', j.materi || '', a.siswa?.nama_siswa || '', a.status, a.keterangan || '', a.poin]);
+      if (modeArsipRiwayat) {
+        const semId = document.getElementById('filterSemesterRiwayat').value;
+        const { data: jurnalArsip } = await db.from('arsip_jurnal')
+          .select('id, tanggal, hari, jam_ke, mapel, materi, kelas_id')
+          .eq('guru_id', guruId).eq('semester_id', semId).order('tanggal');
+        const idJurnal = (jurnalArsip || []).map(j => j.id);
+        let absensiArsip = [];
+        if (idJurnal.length) {
+          const { data } = await db.from('arsip_absensi')
+            .select('jurnal_id, status, keterangan, poin, siswa_id').in('jurnal_id', idJurnal);
+          absensiArsip = data || [];
+        }
+        const { data: siswaAktif } = await db.from('siswa').select('id, nama_siswa');
+        const { data: siswaArsip } = await db.from('arsip_siswa').select('id, nama_siswa').eq('guru_id', guruId);
+        const petaSiswa = new Map([...(siswaAktif || []), ...(siswaArsip || [])].map(s => [s.id, s.nama_siswa]));
+        const { data: kelasAktif } = await db.from('kelas').select('id, nama_kelas');
+        const { data: kelasArsip } = await db.from('arsip_kelas').select('id, nama_kelas').eq('guru_id', guruId);
+        const petaKelas = new Map([...(kelasAktif || []), ...(kelasArsip || [])].map(k => [k.id, k.nama_kelas]));
+
+        (jurnalArsip || []).forEach(j => {
+          const absensiJ = absensiArsip.filter(a => a.jurnal_id === j.id);
+          if (!absensiJ.length) {
+            baris.push([j.tanggal, j.hari, j.jam_ke, petaKelas.get(j.kelas_id) || '', j.mapel || '', j.materi || '', '', '', '', '']);
+          }
+          absensiJ.forEach(a => {
+            baris.push([j.tanggal, j.hari, j.jam_ke, petaKelas.get(j.kelas_id) || '', j.mapel || '', j.materi || '', petaSiswa.get(a.siswa_id) || '', a.status, a.keterangan || '', a.poin]);
+          });
         });
-      });
+      } else {
+        const { data } = await db.from('jurnal')
+          .select('tanggal, hari, jam_ke, mapel, materi, kelas:kelas_id (nama_kelas), absensi (status, keterangan, poin, siswa:siswa_id (nama_siswa))')
+          .eq('guru_id', guruId).is('dihapus_pada', null).order('tanggal');
+        (data || []).forEach(j => {
+          (j.absensi || []).forEach(a => {
+            baris.push([j.tanggal, j.hari, j.jam_ke, j.kelas?.nama_kelas || '', j.mapel || '', j.materi || '', a.siswa?.nama_siswa || '', a.status, a.keterangan || '', a.poin]);
+          });
+        });
+      }
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
       ws['!cols'] = [{wch:12},{wch:10},{wch:8},{wch:14},{wch:16},{wch:24},{wch:24},{wch:12},{wch:20},{wch:8}];
       XLSX.utils.book_append_sheet(wb, ws, 'Jurnal Mengajar');
-      XLSX.writeFile(wb, 'backup-jurnal-mengajar.xlsx');
+      XLSX.writeFile(wb, (modeArsipRiwayat ? 'arsip-' : 'backup-') + 'jurnal-mengajar.xlsx');
 
       link.classList.remove('disabled');
       link.textContent = '📥 Export Semua Data (Excel)';
