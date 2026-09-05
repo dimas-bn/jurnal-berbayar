@@ -4202,12 +4202,19 @@
       if (error) { box.innerHTML = '<p class="no-match">Gagal memuat: ' + error.message + '</p>'; return; }
       if (!data || data.length === 0) { box.innerHTML = '<p class="no-match">Belum ada transaksi tercatat.</p>'; return; }
 
-      const labelStatus = {
+      const labelStatusTetap = {
         berhasil: '✅ Berhasil (otomatis)',
-        butuh_review_manual: '⚠️ Butuh Review Manual',
-        ruang_tunggu_pendaftaran: '⏳ Menunggu Pendaftaran',
         gagal_lainnya: '❌ Gagal Lainnya'
       };
+
+      function labelStatus(l) {
+        if (labelStatusTetap[l.status]) return labelStatusTetap[l.status];
+        const hariBerlalu = Math.floor((Date.now() - new Date(l.diterima_pada)) / (1000 * 60 * 60 * 24));
+        if (hariBerlalu >= 3) {
+          return `⚠️ Kemungkinan Email Salah (sudah ${hariBerlalu} hari)`;
+        }
+        return `⏳ Menunggu Pendaftaran (${hariBerlalu === 0 ? 'hari ini' : hariBerlalu + ' hari'})`;
+      }
 
       box.innerHTML = data.map(l => `
         <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px; margin-bottom:10px;">
@@ -4216,7 +4223,7 @@
           </p>
           <p style="font-size:13.5px; margin:0 0 8px;">
             Produk: ${l.nama_produk || '-'} → Paket terdeteksi: <b>${l.paket_terdeteksi || '-'}</b><br>
-            Status: <b>${labelStatus[l.status] || l.status}</b>
+            Status: <b>${labelStatus(l)}</b>
           </p>
           ${l.catatan_admin ? `<p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;"><b>Catatan:</b> ${l.catatan_admin}</p>` : ''}
           ${l.status !== 'berhasil' ? `
