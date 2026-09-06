@@ -3571,8 +3571,8 @@
         const row = [
           i + 1,
           s.nama_siswa,
-          ...namaKolom.map(k => nilaiSiswa[k] !== undefined ? Number(nilaiSiswa[k].toFixed(1)) : ''),
-          rapor !== null ? Number(rapor.toFixed(1)) : ''
+        ...namaKolom.map(k => nilaiSiswa[k] !== undefined ? Math.round(nilaiSiswa[k]) : ''),
+        rapor !== null ? Math.round(rapor) : ''
         ];
         baris.push(row);
       });
@@ -3762,8 +3762,8 @@
         const nilaiSiswa = pivot[s.id] || {};
         const rapor = hitungNilaiRapor(rumus, nilaiSiswa);
         html += `<tr><td>${i + 1}</td><td onclick="tampilkanNamaLengkap('${escapeHtml(s.nama_siswa).replace(/'/g, "\\'")}')">${escapeHtml(s.nama_siswa)}</td>`;
-        namaKolom.forEach(k => html += `<td>${nilaiSiswa[k] !== undefined ? nilaiSiswa[k].toFixed(1) : '-'}</td>`);
-        html += `<td><strong>${rapor !== null ? rapor.toFixed(1) : '-'}</strong></td></tr>`;
+        namaKolom.forEach(k => html += `<td>${nilaiSiswa[k] !== undefined ? Math.round(nilaiSiswa[k]) : '-'}</td>`);
+        html += `<td><strong>${rapor !== null ? Math.round(rapor) : '-'}</strong></td></tr>`;
       });
 
       html += '</tbody></table>';
