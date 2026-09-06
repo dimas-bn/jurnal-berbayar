@@ -845,29 +845,60 @@
     .tabel-daftar-nilai { border-collapse: collapse; white-space: nowrap; min-width: 100%; }
     .tabel-daftar-nilai th, .tabel-daftar-nilai td { border: 1px solid #ddd; padding: 6px 10px; text-align: center; font-size: 13px; }
     .tabel-daftar-nilai th { background: #f4f5f7; }
-    .wadah-daftar-nilai {
-    background: #fff;
-    border-radius: 10px;
-    padding: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    overflow-x: auto;}
+      .wadah-daftar-nilai {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      overflow-x: auto;}
       .wadah-daftar-nilai .tabel-daftar-nilai th { background: #f4f5f7; }
       .wadah-daftar-nilai .tabel-daftar-nilai td { font-size: 13px; }
-    .tabel-daftar-nilai th:nth-child(2),
-    .tabel-daftar-nilai td:nth-child(2) {
-      position: sticky;
-      left: 0;
-      background: #fff;
-      z-index: 1;
-      box-shadow: 2px 0 3px rgba(0,0,0,0.06);
-    }
+    /* Freeze kolom No */
     .tabel-daftar-nilai th:nth-child(1),
     .tabel-daftar-nilai td:nth-child(1) {
       position: sticky;
       left: 0;
+      width: 34px;
       background: #fff;
-      z-index: 1;
+      z-index: 3;
     }
+    .tabel-daftar-nilai th:nth-child(1) { background: #f4f5f7; }
+
+    /* Freeze kolom Nama, rata kiri */
+    .tabel-daftar-nilai th:nth-child(2),
+    .tabel-daftar-nilai td:nth-child(2) {
+      position: sticky;
+      left: 34px;
+      text-align: left;
+      background: #fff;
+      z-index: 2;
+      box-shadow: 2px 0 3px rgba(0,0,0,0.08);
+    }
+    .tabel-daftar-nilai th:nth-child(2) { background: #f4f5f7; }
+
+    @media (max-width: 768px) {
+      .tabel-daftar-nilai td:nth-child(2),
+      .tabel-daftar-nilai th:nth-child(2) {
+        max-width: 90px;
+        white-space: normal;
+        word-break: break-word;
+        font-size: 12px;
+      }
+    }
+
+    .notice-mobile-daftar-nilai { display: none; }
+      @media (max-width: 768px) {
+      .notice-mobile-daftar-nilai {
+        display: block;
+        background: #FFF3CD;
+        color: #7a5b00;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        margin-bottom: 10px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1479,7 +1510,7 @@
         <input type="text" id="input-rumus" placeholder="mis. (UTS + UAS*2) / 3" style="margin-top:6px;">
         <button type="button" class="entry-btn" onclick="simpanRumus()" style="margin-top:6px;">Simpan Rumus</button>
       </div>
-
+      <p class="notice-mobile-daftar-nilai">📱 Disarankan dibuka di laptop/komputer untuk tampilan yang lebih nyaman. Nama siswa dipersingkat di HP agar kolom nilai tetap terlihat.</p>
       <div id="konten-daftar-nilai" style="overflow-x:auto;"><p class="empty-hint">Pilih kelas dahulu.</p></div>
     </section>
 
