@@ -902,6 +902,8 @@
         margin-bottom: 10px;
       }
     }
+    #scroll-atas-daftar-nilai::-webkit-scrollbar { height: 8px; }
+    #scroll-atas-daftar-nilai { scrollbar-width: thin; }
 
   </style>
 </head>
@@ -1515,6 +1517,11 @@
         <button type="button" class="entry-btn" onclick="simpanRumus()" style="margin-top:6px;">Simpan Rumus</button>
       </div>
       <p class="notice-mobile-daftar-nilai">📱 Disarankan dibuka di laptop/komputer untuk tampilan yang lebih nyaman. Nama siswa dipersingkat di HP agar kolom nilai tetap terlihat.</p>
+      <button type="button" id="btnExportDaftarNilai" class="entry-btn" style="width:100%; margin:10px 0; background:#5B6B8C; color:#fff; border-color:#5B6B8C;">📤 Export ke Excel</button>
+      <div id="scroll-atas-daftar-nilai" style="overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:2px; display:none;">
+        <div id="scroll-atas-inner-daftar-nilai" style="height:1px;"></div>
+      </div>
+
       <div id="konten-daftar-nilai" style="overflow-x:auto;"><p class="empty-hint">Pilih kelas dahulu.</p></div>
     </section>
 
@@ -3551,6 +3558,31 @@
       renderRiwayatNilaiTerfilter();
     });
 
+    document.getElementById('btnExportDaftarNilai').addEventListener('click', function () {
+      if (!dataDaftarNilaiTerakhir) { alert('Pilih kelas dan pastikan data sudah tampil dahulu.'); return; }
+      const { siswaList, namaKolom, pivot, rumus, namaKelas } = dataDaftarNilaiTerakhir;
+
+      const header = ['No', 'Nama', ...namaKolom, 'Nilai Rapor'];
+      const baris = [header];
+
+      siswaList.forEach((s, i) => {
+        const nilaiSiswa = pivot[s.id] || {};
+        const rapor = hitungNilaiRapor(rumus, nilaiSiswa);
+        const row = [
+          i + 1,
+          s.nama_siswa,
+          ...namaKolom.map(k => nilaiSiswa[k] !== undefined ? Number(nilaiSiswa[k].toFixed(1)) : ''),
+          rapor !== null ? Number(rapor.toFixed(1)) : ''
+        ];
+        baris.push(row);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(baris);
+      XLSX.utils.book_append_sheet(wb, ws, namaKelas.slice(0, 31));
+      XLSX.writeFile(wb, `Daftar-Nilai-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
+    });
+
     document.getElementById('btnExportNilai').addEventListener('click', function() {
       const dataTersaring = ambilDataNilaiTerfilter();
       if (!dataTersaring.length) { alert('Tidak ada data nilai untuk diekspor (cek filter yang aktif).'); return; }
@@ -3643,6 +3675,7 @@
       return { siswaList, namaKolom, pivot };
     }
     let rumusAktif = '';
+    let dataDaftarNilaiTerakhir = null; // { siswaList, namaKolom, pivot, rumus, namaKelas }
 
     async function muatDaftarNilai() {
       const kelasId = document.getElementById('daftarNilaiKelas').value;
@@ -3656,9 +3689,24 @@
       document.getElementById('input-rumus').value = rumusAktif;
 
       const { siswaList, namaKolom, pivot } = await ambilDataDaftarNilai(kelasId);
+      const namaKelasTerpilih = document.getElementById('daftarNilaiKelas').selectedOptions[0]?.text || 'Kelas';
+      dataDaftarNilaiTerakhir = { siswaList, namaKolom, pivot, rumus: rumusAktif, namaKelas: namaKelasTerpilih };
       isiDropdownKolom(namaKolom);
       editorEl.style.display = 'block';
       renderTabelDaftarNilai(siswaList, namaKolom, pivot, rumusAktif);
+    }
+
+    function setupScrollAtasDaftarNilai() {
+      const atas = document.getElementById('scroll-atas-daftar-nilai');
+      const innerAtas = document.getElementById('scroll-atas-inner-daftar-nilai');
+      const bawah = document.getElementById('konten-daftar-nilai');
+      const tabel = bawah.querySelector('table');
+      if (!tabel) { atas.style.display = 'none'; return; }
+
+      atas.style.display = 'block';
+      innerAtas.style.width = tabel.scrollWidth + 'px';
+      atas.onscroll = () => { bawah.scrollLeft = atas.scrollLeft; };
+      bawah.onscroll = () => { atas.scrollLeft = bawah.scrollLeft; };
     }
 
     function isiDropdownKolom(namaKolom) {
@@ -3721,6 +3769,7 @@
       html += '</tbody></table>';
       // di renderTabelDaftarNilai, ganti target innerHTML:
       kontenEl.innerHTML = `<div class="wadah-daftar-nilai">${html}</div>`;
+      setupScrollAtasDaftarNilai();
     }
 
     function tampilkanNamaLengkap(nama) {
