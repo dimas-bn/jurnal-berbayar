@@ -879,10 +879,14 @@
     @media (max-width: 768px) {
       .tabel-daftar-nilai td:nth-child(2),
       .tabel-daftar-nilai th:nth-child(2) {
-        max-width: 90px;
-        white-space: normal;
-        word-break: break-word;
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 12px;
+      }
+      .tabel-daftar-nilai td:nth-child(2) {
+        cursor: pointer;
       }
     }
 
@@ -3709,7 +3713,7 @@
       siswaList.forEach((s, i) => {
         const nilaiSiswa = pivot[s.id] || {};
         const rapor = hitungNilaiRapor(rumus, nilaiSiswa);
-        html += `<tr><td>${i + 1}</td><td>${escapeHtml(s.nama_siswa)}</td>`;
+        html += `<tr><td>${i + 1}</td><td onclick="tampilkanNamaLengkap('${escapeHtml(s.nama_siswa).replace(/'/g, "\\'")}')">${escapeHtml(s.nama_siswa)}</td>`;
         namaKolom.forEach(k => html += `<td>${nilaiSiswa[k] !== undefined ? nilaiSiswa[k].toFixed(1) : '-'}</td>`);
         html += `<td><strong>${rapor !== null ? rapor.toFixed(1) : '-'}</strong></td></tr>`;
       });
@@ -3717,6 +3721,10 @@
       html += '</tbody></table>';
       // di renderTabelDaftarNilai, ganti target innerHTML:
       kontenEl.innerHTML = `<div class="wadah-daftar-nilai">${html}</div>`;
+    }
+
+    function tampilkanNamaLengkap(nama) {
+      if (window.innerWidth <= 768) alert(nama);
     }
 
     // ================== REKAP BULANAN ==================
