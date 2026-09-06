@@ -845,6 +845,29 @@
     .tabel-daftar-nilai { border-collapse: collapse; white-space: nowrap; min-width: 100%; }
     .tabel-daftar-nilai th, .tabel-daftar-nilai td { border: 1px solid #ddd; padding: 6px 10px; text-align: center; font-size: 13px; }
     .tabel-daftar-nilai th { background: #f4f5f7; }
+    .wadah-daftar-nilai {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow-x: auto;}
+      .wadah-daftar-nilai .tabel-daftar-nilai th { background: #f4f5f7; }
+      .wadah-daftar-nilai .tabel-daftar-nilai td { font-size: 13px; }
+    .tabel-daftar-nilai th:nth-child(2),
+    .tabel-daftar-nilai td:nth-child(2) {
+      position: sticky;
+      left: 0;
+      background: #fff;
+      z-index: 1;
+      box-shadow: 2px 0 3px rgba(0,0,0,0.06);
+    }
+    .tabel-daftar-nilai th:nth-child(1),
+    .tabel-daftar-nilai td:nth-child(1) {
+      position: sticky;
+      left: 0;
+      background: #fff;
+      z-index: 1;
+    }
   </style>
 </head>
 <body>
@@ -3637,8 +3660,9 @@
         return key;
       });
       try {
-        return Parser.evaluate(rumusBersih, mapVar);
+        return exprEval.Parser.evaluate(rumusBersih, mapVar);
       } catch (e) {
+        console.warn('Rumus tidak valid:', rumus, e.message);
         return null;
       }
     }
@@ -3660,7 +3684,8 @@
       });
 
       html += '</tbody></table>';
-      kontenEl.innerHTML = html;
+      // di renderTabelDaftarNilai, ganti target innerHTML:
+      kontenEl.innerHTML = `<div class="wadah-daftar-nilai">${html}</div>`;
     }
 
     // ================== REKAP BULANAN ==================
