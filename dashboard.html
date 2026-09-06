@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/expr-eval/2.0.2/bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -840,6 +841,10 @@
     ::-webkit-scrollbar-track { background: var(--ink); }
     ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #508467; }
+
+    .tabel-daftar-nilai { border-collapse: collapse; white-space: nowrap; min-width: 100%; }
+    .tabel-daftar-nilai th, .tabel-daftar-nilai td { border: 1px solid #ddd; padding: 6px 10px; text-align: center; font-size: 13px; }
+    .tabel-daftar-nilai th { background: #f4f5f7; }
   </style>
 </head>
 <body>
@@ -930,6 +935,7 @@
     <button id="tab-riwayat" onclick="showTab('riwayat')">Riwayat</button>
     <button id="tab-catatan" onclick="showTab('catatan')">Catatan</button>
     <button id="tab-nilai" onclick="showTab('nilai')">Nilai</button>
+    <button id="tab-daftar-nilai" onclick="showTab('daftar-nilai')">Daftar Nilai</button>
     <button id="tab-rekap" onclick="showTab('rekap')">Rekap</button>
     <button id="tab-statistik" onclick="showTab('statistik')">Statistik</button>
     <button id="tab-admin" onclick="showTab('admin')" style="display:none;">Admin</button>
@@ -1434,6 +1440,26 @@
       <div id="riwayatNilaiList"><p class="loading">Memuat riwayat…</p></div>
     </section>
 
+    <!-- ===== TAB: DAFTAR NILAI ===== -->
+    <section id="panel-daftar-nilai" class="page" style="display:none;">
+      <p class="eyebrow">Rekap nilai</p>
+      <p class="tanggal-hari">Daftar Nilai</p>
+
+      <label for="daftarNilaiKelas">Kelas</label>
+      <select id="daftarNilaiKelas" onchange="muatDaftarNilai()"><option value="">Pilih kelas…</option></select>
+
+      <div id="editor-rumus" style="margin:14px 0; display:none;">
+        <label for="pilih-kolom-rumus">Rumus Nilai Rapor</label>
+        <select id="pilih-kolom-rumus" onchange="sisipkanKolomKeRumus(this.value)">
+          <option value="">+ Sisipkan kolom nilai</option>
+        </select>
+        <input type="text" id="input-rumus" placeholder="mis. (UTS + UAS*2) / 3" style="margin-top:6px;">
+        <button type="button" class="entry-btn" onclick="simpanRumus()" style="margin-top:6px;">Simpan Rumus</button>
+      </div>
+
+      <div id="konten-daftar-nilai" style="overflow-x:auto;"><p class="empty-hint">Pilih kelas dahulu.</p></div>
+    </section>
+
     <!-- ===== TAB: REKAP BULANAN ===== -->
     <section id="panel-rekap" class="page" style="display:none;">
       <p class="eyebrow">Laporan kehadiran</p>
@@ -1830,7 +1856,7 @@
 
     // ================== NAVIGASI TAB ==================
     function showTab(tab) {
-      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','rekap','statistik','admin','info','testimoni'].forEach(t => {
+      ['poin','petunjuk','setup','isi','riwayat','catatan','nilai','daftar-nilai','rekap','statistik','admin','info','testimoni'].forEach(t => {
         document.getElementById('panel-' + t).style.display = (t === tab) ? 'block' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
       });
@@ -1839,6 +1865,11 @@
       if (tab === 'riwayat') muatRiwayat();
       if (tab === 'catatan') muatCatatanSemua();
       if (tab === 'nilai') {
+      // tambahkan baris baru setelah baris 1847 (if (tab === 'nilai') {...}):
+      if (tab === 'daftar-nilai') {
+        const sel = document.getElementById('daftarNilaiKelas');
+        if (sel.value) muatDaftarNilai();
+      }
         muatPengaturanKKM(); muatRiwayatNilai();
         const tglNilai = document.getElementById('tanggalNilai');
         if (!tglNilai.value) tglNilai.value = tanggalLokalISO(new Date());
@@ -1984,7 +2015,7 @@
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
       daftarKelas = (data || []).map(k => ({ id: k.id, kelas: k.nama_kelas, mapel: k.mata_pelajaran }));
       const opsi = '<option value="">Pilih kelas…</option>' + daftarKelas.map(k => `<option value="${k.id}">${escapeHtml(k.kelas)}</option>`).join('');
-      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas','nilaiKelas','statNilaiKelas'].forEach(id => {
+      ['kelas','kelasUntukSiswa','kelasUntukJadwal','rekapKelas','poinKelas','nilaiKelas','statNilaiKelas','daftarNilaiKelas'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = opsi;
       });
@@ -3526,6 +3557,110 @@
         .eq('guru_id', guruId).eq('kelas_id', kelasId).eq('nama_penilaian', namaPenilaian).eq('tanggal', tanggal);
       if (error) { alert('Gagal menghapus: ' + error.message); return; }
       muatRiwayatNilai();
+    }
+
+    // ================== DAFTAR NILAI ==================
+    async function ambilDataDaftarNilai(kelasId) {
+      const { data: siswaList } = await db
+        .from('siswa').select('id, nama_siswa, nomor_presensi')
+        .eq('kelas_id', kelasId).order('nomor_presensi');
+
+      const { data: nilaiRows } = await db
+        .from('nilai').select('siswa_id, nama_penilaian, nilai')
+        .eq('kelas_id', kelasId);
+
+      const namaKolom = [...new Set(nilaiRows.map(r => r.nama_penilaian))];
+      const pivot = {};
+      for (const row of nilaiRows) {
+        pivot[row.siswa_id] ??= {};
+        pivot[row.siswa_id][row.nama_penilaian] ??= [];
+        pivot[row.siswa_id][row.nama_penilaian].push(row.nilai);
+      }
+      for (const siswaId in pivot) {
+        for (const kolom in pivot[siswaId]) {
+          const arr = pivot[siswaId][kolom];
+          pivot[siswaId][kolom] = arr.reduce((a, b) => a + b, 0) / arr.length;
+        }
+      }
+      return { siswaList, namaKolom, pivot };
+    }
+    let rumusAktif = '';
+
+    async function muatDaftarNilai() {
+      const kelasId = document.getElementById('daftarNilaiKelas').value;
+      const kontenEl = document.getElementById('konten-daftar-nilai');
+      const editorEl = document.getElementById('editor-rumus');
+      if (!kelasId) { kontenEl.innerHTML = '<p class="empty-hint">Pilih kelas dahulu.</p>'; editorEl.style.display = 'none'; return; }
+      kontenEl.innerHTML = '<p class="loading">Memuat data nilai…</p>';
+
+      const { data: formulaRow } = await db.from('formula_nilai').select('rumus').eq('kelas_id', kelasId).maybeSingle();
+      rumusAktif = formulaRow?.rumus || '';
+      document.getElementById('input-rumus').value = rumusAktif;
+
+      const { siswaList, namaKolom, pivot } = await ambilDataDaftarNilai(kelasId);
+      isiDropdownKolom(namaKolom);
+      editorEl.style.display = 'block';
+      renderTabelDaftarNilai(siswaList, namaKolom, pivot, rumusAktif);
+    }
+
+    function isiDropdownKolom(namaKolom) {
+      const sel = document.getElementById('pilih-kolom-rumus');
+      sel.innerHTML = '<option value="">+ Sisipkan kolom nilai</option>' +
+        namaKolom.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    }
+
+    function sisipkanKolomKeRumus(nama) {
+      if (!nama) return;
+      const input = document.getElementById('input-rumus');
+      input.value += `{${nama}}`;
+      document.getElementById('pilih-kolom-rumus').value = '';
+    }
+
+    async function simpanRumus() {
+      const kelasId = document.getElementById('daftarNilaiKelas').value;
+      const rumus = document.getElementById('input-rumus').value.trim();
+      if (!kelasId) return;
+      const { error } = await db.from('formula_nilai').upsert({
+        kelas_id: kelasId, guru_id: guruId, rumus, diperbarui_pada: new Date().toISOString()
+      });
+      if (error) { alert('Gagal menyimpan rumus: ' + error.message); return; }
+      rumusAktif = rumus;
+      muatDaftarNilai();
+    }
+
+    function hitungNilaiRapor(rumus, nilaiSiswa) {
+      if (!rumus) return null;
+      const mapVar = {};
+      const rumusBersih = rumus.replace(/\{([^}]+)\}/g, (_, nama) => {
+        const key = 'v' + Object.keys(mapVar).length;
+        mapVar[key] = nilaiSiswa[nama] ?? 0;
+        return key;
+      });
+      try {
+        return Parser.evaluate(rumusBersih, mapVar);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function renderTabelDaftarNilai(siswaList, namaKolom, pivot, rumus) {
+      const kontenEl = document.getElementById('konten-daftar-nilai');
+      if (!siswaList.length) { kontenEl.innerHTML = '<p class="empty-hint">Belum ada siswa di kelas ini.</p>'; return; }
+
+      let html = '<table class="tabel-daftar-nilai"><thead><tr><th>No</th><th>Nama</th>';
+      namaKolom.forEach(k => html += `<th>${escapeHtml(k)}</th>`);
+      html += '<th>Nilai Rapor</th></tr></thead><tbody>';
+
+      siswaList.forEach((s, i) => {
+        const nilaiSiswa = pivot[s.id] || {};
+        const rapor = hitungNilaiRapor(rumus, nilaiSiswa);
+        html += `<tr><td>${i + 1}</td><td>${escapeHtml(s.nama_siswa)}</td>`;
+        namaKolom.forEach(k => html += `<td>${nilaiSiswa[k] !== undefined ? nilaiSiswa[k].toFixed(1) : '-'}</td>`);
+        html += `<td><strong>${rapor !== null ? rapor.toFixed(1) : '-'}</strong></td></tr>`;
+      });
+
+      html += '</tbody></table>';
+      kontenEl.innerHTML = html;
     }
 
     // ================== REKAP BULANAN ==================
