@@ -1643,7 +1643,7 @@
       <p class="eyebrow">Tautan & Masukan</p>
       <p class="tanggal-hari">Info & Masukan</p>
       <p style="font-size:13px; color:var(--muted); margin:8px 0 16px;">
-        Kumpulan tautan penting seputar JMO, tombol untuk membagikan aplikasi ini ke rekan guru, dan kotak masukan kalau kamu punya kritik, saran, atau ide.
+        Kumpulan tautan penting seputar JMO, tombol untuk membagikan aplikasi ini ke rekan guru, dan kotak masukan kalau Anda punya kritik, saran, atau ide.
       </p>
 
       <p class="stat-section-title">Tautan Penting</p>
@@ -1652,7 +1652,17 @@
         <a href="https://www.dimasbn.my.id/" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#2A429A; color:#fff; border:1px solid #2A429A;">👤 Website Resmi Dimas BN BN</a>
         <a href="https://www.dimasbn.my.id/p/paket-harga-jmo.html" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#A6493C; color:#fff; border:1px solid #A6493C;">💳 Paket & Harga JMO</a>
       </div>
+      </div>
 
+      <div id="sectionAfiliasi" style="display:none; margin-bottom:20px;">
+        <p class="stat-section-title">Program Afiliasi</p>
+        <p style="font-size:12.5px; color:var(--muted); margin:0 0 10px;">
+          Sebagai pengguna Paket Lifetime, Anda bisa ikut Program Afiliasi JMO — dapat komisi tiap rekan guru yang berlangganan lewat link referral milik Anda.
+        </p>
+        <a href="https://web.mayar.id/sign-in/referral/zdfH4jR" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#C08A2E; color:#fff; border:1px solid #C08A2E;">🤝 Ikut Program Afiliasi JMO</a>
+      </div>
+
+      <button type="button" class="btn-tambah" id="btnBagikanJMO" style="width:100%; margin-bottom:10px; background:#D69C36; color:#fff; border:1px solid #D69C36;">📤 Bagikan JMO ke Rekan Guru</button>
       <button type="button" class="btn-tambah" id="btnBagikanJMO" style="width:100%; margin-bottom:10px; background:#D69C36; color:#fff; border:1px solid #D69C36;">📤 Bagikan JMO ke Rekan Guru</button>
 
       <a href="https://t.me/+2uZH5Az4p600Nzll" target="_blank" rel="noopener" class="btn-tambah" style="display:block; text-align:center; text-decoration:none; background:#229ED9; color:#fff; border:1px solid #229ED9; margin-bottom:24px;">✈️ Gabung Grup Komunitas Telegram</a>
@@ -1668,7 +1678,7 @@
       </select>
 
       <label for="masukanPesan" style="margin-top:10px; display:block;">Pesan</label>
-      <textarea id="masukanPesan" rows="4" placeholder="Tulis masukan, kritik, atau ide kamu di sini..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
+      <textarea id="masukanPesan" rows="4" placeholder="Tulis masukan, kritik, atau ide Anda di sini..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;"></textarea>
 
       <button type="button" class="btn-tambah" id="btnKirimMasukan" style="width:100%; margin-top:12px;">Kirim Masukan</button>
       <p id="masukanStatus" style="font-size:12.5px; margin:8px 0 0; display:none;"></p>
@@ -1767,6 +1777,10 @@
 
       namaLengkapSaatIni = profil.nama_lengkap;
       labelPaketSaatIni = { trial: 'Trial', bulanan: 'Bulanan', tahunan: 'Tahunan', lifetime: 'Lifetime' }[profil.paket] || profil.paket;
+
+      if (profil.paket === 'lifetime') {
+        document.getElementById('sectionAfiliasi').style.display = '';
+      }
 
       {
         let infoTeks = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
@@ -4185,7 +4199,7 @@
           await navigator.share(shareData);
         } else {
           await navigator.clipboard.writeText(shareData.url);
-          alert('Link JMO sudah disalin! Tinggal tempel ke WhatsApp/grup guru kamu.');
+          alert('Link JMO sudah disalin! Tinggal tempel ke WhatsApp/grup guru Anda.');
         }
       } catch (err) {
         // pengguna batal share, tidak perlu ditangani
@@ -4218,7 +4232,7 @@
         statusEl.textContent = 'Gagal mengirim: ' + (error.message || 'coba lagi ya.');
       } else {
         statusEl.style.color = 'var(--accent-dark)';
-        statusEl.textContent = 'Terima kasih! Masukan kamu sudah terkirim.';
+        statusEl.textContent = 'Terima kasih! Masukan Anda sudah terkirim.';
         document.getElementById('masukanPesan').value = '';
       }
     });
@@ -4247,7 +4261,7 @@
           <p style="font-size:14px; margin:0 0 10px;">${m.pesan}</p>
           ${m.balasan_admin ? `
             <p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;">
-              <b>Balasan kamu (${new Date(m.dibalas_pada).toLocaleString('id-ID')}):</b><br>${m.balasan_admin}
+              <b>Balasan Anda (${new Date(m.dibalas_pada).toLocaleString('id-ID')}):</b><br>${m.balasan_admin}
             </p>
           ` : ''}
           <textarea id="balas-${m.id}" rows="2" placeholder="Tulis balasan…" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px; font-family:inherit; resize:vertical;">${m.balasan_admin || ''}</textarea>
