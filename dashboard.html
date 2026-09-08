@@ -4393,7 +4393,7 @@
       box.innerHTML = data.map(t => `
         <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:12px; margin-bottom:8px;">
           <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)} · ${labelStatus[t.status]}</p>
-          <p style="font-size:13.5px; margin:0;">${t.teks}</p>
+          <p style="font-size:13.5px; margin:0;">${escapeHtml(t.teks)}</p>
         </div>
       `).join('');
 
@@ -4436,9 +4436,9 @@
       box.innerHTML = data.map(t => `
         <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px; margin-bottom:10px;">
           <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">
-            <b>${t.nama_guru || t.email}</b> · ${t.nama_tampilan} · ${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)} · ${labelStatus[t.status]}
+            <b>${escapeHtml(t.nama_guru || t.email)}</b> · ${escapeHtml(t.nama_tampilan)} · ${'★'.repeat(t.rating)}${'☆'.repeat(5 - t.rating)} · ${labelStatus[t.status]}
           </p>
-          <p style="font-size:14px; margin:0 0 10px;">${t.teks}</p>
+          <p style="font-size:14px; margin:0 0 10px;">${escapeHtml(t.teks)}</p>
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn-tambah" style="background:var(--accent); border-color:var(--accent);" onclick="prosesTestimoni('${t.id}','approved')">✅ Setujui</button>
             <button type="button" class="btn-tambah" style="background:var(--red); border-color:var(--red);" onclick="prosesTestimoni('${t.id}','rejected')">❌ Tolak</button>
@@ -4481,13 +4481,13 @@
       box.innerHTML = data.map(l => `
         <div style="background:#fff; border:1px solid var(--paper-line); border-radius:8px; padding:14px; margin-bottom:10px;">
           <p style="font-size:12px; color:var(--muted); margin:0 0 4px;">
-            <b>${l.email_pembayar}</b>${l.nama_pembayar ? ' · ' + l.nama_pembayar : ''} · ${l.event_type} · ${new Date(l.diterima_pada).toLocaleString('id-ID')}
+            <b>${escapeHtml(l.email_pembayar)}</b>${l.nama_pembayar ? ' · ' + escapeHtml(l.nama_pembayar) : ''} · ${escapeHtml(l.event_type)} · ${new Date(l.diterima_pada).toLocaleString('id-ID')}
           </p>
           <p style="font-size:13.5px; margin:0 0 8px;">
             Produk: ${l.nama_produk || '-'} → Paket terdeteksi: <b>${l.paket_terdeteksi || '-'}</b><br>
             Status: <b>${labelStatus(l)}</b>
           </p>
-          ${l.catatan_admin ? `<p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;"><b>Catatan:</b> ${l.catatan_admin}</p>` : ''}
+          ${l.catatan_admin ? `<p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;"><b>Catatan:</b> ${escapeHtml(l.catatan_admin)}</p>` : ''}
           ${(l.status !== 'berhasil' && l.status !== 'notifikasi_nonaktif') ? `
             <button type="button" class="btn-tambah" onclick="selesaikanLogTransaksi('${l.id}')">✔️ Tandai Selesai (Sudah Diaktifkan Manual)</button>
           ` : ''}
