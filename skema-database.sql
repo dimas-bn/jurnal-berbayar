@@ -11,7 +11,7 @@ create table profil_guru (
   id uuid primary key references auth.users(id) on delete cascade,
   nama_lengkap text not null,
   email text not null,
-  paket text not null default 'trial' check (paket in ('trial', 'bulanan', 'tahunan', 'lifetime')),
+  paket text not null default 'trial' check (paket in ('trial', 'bulanan', 'semester', 'tahunan', 'lifetime')),
   status_aktif boolean not null default true,
   tanggal_mulai timestamp with time zone default now(),
   tanggal_berakhir timestamp with time zone, -- kosong (null) untuk paket lifetime
