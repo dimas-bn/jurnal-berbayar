@@ -4465,7 +4465,8 @@
 
       const labelStatusTetap = {
         berhasil: '✅ Berhasil (otomatis)',
-        gagal_lainnya: '❌ Gagal Lainnya'
+        gagal_lainnya: '❌ Gagal Lainnya',
+        notifikasi_nonaktif: 'ℹ️ Info: Expired/Unsubscribe (tidak mengunci akses)'
       };
 
       function labelStatus(l) {
@@ -4487,7 +4488,7 @@
             Status: <b>${labelStatus(l)}</b>
           </p>
           ${l.catatan_admin ? `<p style="font-size:12.5px; color:var(--accent-dark); background:#E4EEE7; padding:8px; border-radius:6px; margin:0 0 8px;"><b>Catatan:</b> ${l.catatan_admin}</p>` : ''}
-          ${l.status !== 'berhasil' ? `
+          ${(l.status !== 'berhasil' && l.status !== 'notifikasi_nonaktif') ? `
             <button type="button" class="btn-tambah" onclick="selesaikanLogTransaksi('${l.id}')">✔️ Tandai Selesai (Sudah Diaktifkan Manual)</button>
           ` : ''}
         </div>
