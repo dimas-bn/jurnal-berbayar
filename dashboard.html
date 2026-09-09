@@ -1660,6 +1660,7 @@
           Daftar transaksi Mayar yang belum otomatis aktif (email belum terdaftar, produk tak dikenali, dll). Aktifkan manual di Supabase seperti biasa, lalu klik "Tandai Selesai".
         </p>
         <button type="button" class="btn-tambah" id="btnRefreshLogTransaksi" style="width:100%;">🔄 Muat / Perbarui Log Transaksi</button>
+        <button type="button" class="btn-tambah" id="btnHapusLogBerhasilAdmin" style="width:100%; margin-top:8px; background:#A63D3D; color:#fff; border-color:#A63D3D;">🗑️ Hapus Semua Log Berstatus "Berhasil"</button>
         <div id="logTransaksiAdminResult" style="margin-top:12px;"></div>
       </div>
     </section>
@@ -4534,6 +4535,14 @@
       `).join('');
     }
 
+    document.getElementById('btnHapusLogBerhasilAdmin').addEventListener('click', hapusLogBerhasilAdmin);
+    async function hapusLogBerhasilAdmin() {
+      if (!confirm('Yakin hapus SEMUA log transaksi berstatus "Berhasil"?\nIni tidak bisa dibatalkan, dan hanya menghapus riwayat log — tidak memengaruhi status aktif/paket guru manapun.')) return;
+      const { data, error } = await db.rpc('hapus_log_berhasil_admin');
+      if (error) { alert('Gagal menghapus: ' + error.message); }
+      else { alert(`${data} log berhasil dihapus.`); muatLogTransaksiAdmin(); }
+    }
+
     async function selesaikanLogTransaksi(id) {
       const catatan = prompt('Catatan singkat (opsional), mis. "Diaktifkan manual, email pembayaran beda dari akun JMO":') || '';
       const { error } = await db.rpc('selesaikan_log_transaksi_admin', { p_id: id, p_catatan: catatan });
@@ -4579,13 +4588,20 @@
 
       resultEl.innerHTML = `<div class="result-card">
         <p class="rekap-summary">Total ${data.length} guru terdaftar · Diurutkan dari yang paling jarang aktif</p>
-        <div class="rekap-table-wrap">
+        <div class="rekap-scroll-top" id="adminScrollTop"><div></div></div>
+        <div class="rekap-table-wrap" id="adminTableWrap">
           <table class="rekap-table">
             <thead><tr><th>Nama</th><th>Email</th><th>Paket</th><th>Jml Jurnal</th><th>Terakhir Isi</th><th>Status</th></tr></thead>
             <tbody>${baris}</tbody>
           </table>
         </div>
       </div>`;
+
+      const scrollTop = document.getElementById('adminScrollTop');
+      const tableWrap = document.getElementById('adminTableWrap');
+      scrollTop.firstElementChild.style.width = tableWrap.scrollWidth + 'px';
+      scrollTop.addEventListener('scroll', () => { tableWrap.scrollLeft = scrollTop.scrollLeft; });
+      tableWrap.addEventListener('scroll', () => { scrollTop.scrollLeft = tableWrap.scrollLeft; });
     }
 
     // ================== MULAI ==================
