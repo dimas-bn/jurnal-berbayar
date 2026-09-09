@@ -2026,19 +2026,6 @@
       muatDaftarKelasGlobal();
     }
 
-    async function muatKelasSetup() {
-      const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
-      const wadah = document.getElementById('listKelas');
-      document.getElementById('kelasKosong').style.display = (!data || !data.length) ? 'block' : 'none';
-      wadah.innerHTML = (data || []).map(k =>
-        `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
-         <span>
-           <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
-           <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
-         </span></div>`
-      ).join('');
-    }
-
     async function salinLinkPapanPoin(kelasId, token) {
       if (!token) {
         const { data, error } = await db.from('kelas').select('token_publik').eq('id', kelasId).single();
@@ -2055,16 +2042,16 @@
     }
 
     async function muatKelasSetup() {
-       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
-       const wadah = document.getElementById('listKelas');
-       document.getElementById('kelasKosong').style.display = (!data || !data.length) ? 'block' : 'none';
-       wadah.innerHTML = (data || []).map(k =>
-       `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
-       <span>
-       <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
-       <button type="button" class="entry-btn" onclick="duplikasiKelas('${k.id}', '${escapeHtml(k.nama_kelas)}', '${escapeHtml(k.mata_pelajaran)}')">📋 Duplikat</button>
-       <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
-       </span></div>`
+      const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
+      const wadah = document.getElementById('listKelas');
+        document.getElementById('kelasKosong').style.display = (!data || !data.length) ? 'block' : 'none';
+        wadah.innerHTML = (data || []).map(k =>
+        `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
+        <span>
+        <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
+        <button type="button" class="entry-btn" onclick="duplikasiKelas('${k.id}', '${escapeHtml(k.nama_kelas)}', '${escapeHtml(k.mata_pelajaran)}')">📋 Duplikat</button>
+        <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
+        </span></div>`
       ).join('');
     }
 
