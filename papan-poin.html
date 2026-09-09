@@ -140,6 +140,25 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   @keyframes ping { 75%,100% { transform: scale(2); opacity: 0; } }
 
+  /* ===== KARTU MASA AKTIF BERAKHIR ===== */
+  .expired-card {
+    max-width: 480px; margin: 40px auto; text-align: center;
+    background: var(--bg-panel); border: 1px solid var(--red); border-radius: 14px;
+    padding: 36px 24px;
+  }
+  .expired-icon {
+    width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 16px;
+    background: rgba(166,61,61,0.15); border: 1px solid var(--red);
+    display: flex; align-items: center; justify-content: center; font-size: 26px;
+  }
+  .expired-card h2 {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 700;
+    font-size: 21px; color: var(--paper); margin: 0 0 10px;
+  }
+  .expired-card p {
+    font-size: 13px; color: #CFE0D3; line-height: 1.6; margin: 0;
+  }
+
   @media (max-width: 480px) {
     .podium { gap: 6px; }
     .podium-name { font-size: 11px; }
@@ -217,6 +236,17 @@
 
     const { data: daftar, error } = await db.rpc('get_papan_poin_publik', { p_token: token });
     if (error) {
+      if (error.message && error.message.includes('MASA_AKTIF_BERAKHIR')) {
+        document.getElementById('subInfo').textContent = '';
+        document.getElementById('konten').innerHTML = `
+          <div class="expired-card">
+            <div class="expired-icon">⏰</div>
+            <h2>Masa Aktif Berakhir</h2>
+            <p>Papan poin kelas ini sedang tidak dapat ditampilkan karena masa aktif akun guru pemilik kelas sudah berakhir. Mohon hubungi guru mata pelajaran Anda untuk informasi lebih lanjut.</p>
+          </div>`;
+        document.getElementById('refreshNote').textContent = '';
+        return;
+      }
       document.getElementById('statusMsg').textContent = 'Gagal memuat data: ' + error.message;
       document.getElementById('statusMsg').classList.add('error');
       return;
