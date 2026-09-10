@@ -1,216 +1,120 @@
 -- ============================================================
--- SKEMA DATABASE: Jurnal Mengajar Online (Versi Berbayar)
--- Update terakhir: mencerminkan struktur database production
--- per September 2026 (hasil ekspor langsung dari information_schema
--- & pg_policies, BUKAN ditulis dari ingatan).
+-- SKEMA DATABASE - Jurnal Mengajar Online (JMO)
+-- Project Supabase: Jurnal-Online-Berbayar (eziszpzxszxurvqcsikj)
+-- Digenerate ulang dari introspeksi database ASLI pada 10 Sep 2026
+-- (bukan rekonstruksi manual dari file migrasi lama -- jadi ini
+-- mencerminkan kondisi database yang SEBENARNYA berjalan sekarang)
 --
--- File ini untuk REFERENSI/DOKUMENTASI. Karena semua tabel sudah
--- ada di production, JANGAN jalankan file ini langsung di SQL
--- Editor kecuali untuk setup project baru dari nol.
+-- CATATAN: file ini adalah DOKUMENTASI referensi struktur database.
+-- Tidak dimaksudkan untuk dijalankan ulang begitu saja (beberapa
+-- objek seperti extension gen_random_uuid() diasumsikan sudah ada).
 -- ============================================================
 
--- ============================================================
--- BAGIAN 1: AKUN & PERIODE
--- ============================================================
 
--- 1. PROFIL GURU
--- Menyimpan data guru, status langganan, dan preferensi penilaian.
--- Terhubung otomatis ke sistem login Supabase (auth.users).
+-- ============================================================
+-- TABEL INTI: Profil Guru
+-- ============================================================
 create table profil_guru (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid not null,
   nama_lengkap text not null,
   email text not null,
-  paket text not null default 'trial' check (paket in ('trial', 'bulanan', 'semester', 'tahunan', 'lifetime')),
+  paket text not null default 'trial'::text,
   status_aktif boolean not null default true,
   tanggal_mulai timestamp with time zone default now(),
-  tanggal_berakhir timestamp with time zone, -- kosong (null) untuk paket lifetime
+  tanggal_berakhir timestamp with time zone,
   dibuat_pada timestamp with time zone default now(),
-  batas_jeblok numeric not null default 50,     -- ambang nilai "jeblok" (di bawah ini)
-  nilai_kkm numeric not null default 75,        -- KKM default guru ini
-  batas_istimewa numeric not null default 90,   -- ambang nilai "istimewa" (di atas ini)
-  sudah_onboarding boolean default false,       -- sudah lewat modal "Selamat Datang"?
-  setuju_promosi boolean default false          -- setuju dihubungi untuk promosi/testimoni
+  batas_jeblok numeric not null default 50,
+  nilai_kkm numeric not null default 75,
+  batas_istimewa numeric not null default 90,
+  sudah_onboarding boolean default false,
+  setuju_promosi boolean default false,
+  constraint profil_guru_pkey primary key (id),
+  constraint profil_guru_id_fkey foreign key (id) references auth.users(id),
+  constraint profil_guru_paket_check check (paket = any (array['trial','bulanan','semester','tahunan','lifetime']))
 );
+-- RLS: "Guru akses profil sendiri" -- ALL -- USING (auth.uid() = id)
 
--- 2. TAHUN AJARAN
--- Tahun ajaran aktif/lama milik tiap guru (misal 2026/2027).
+
+-- ============================================================
+-- TAHUN AJARAN & SEMESTER
+-- ============================================================
 create table tahun_ajaran (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
   nama text not null,
   aktif boolean default true,
-  dibuat_pada timestamp with time zone default now()
+  dibuat_pada timestamp with time zone default now(),
+  constraint tahun_ajaran_pkey primary key (id),
+  constraint tahun_ajaran_guru_id_fkey foreign key (guru_id) references profil_guru(id)
 );
+-- RLS: "Guru akses tahun ajaran sendiri" -- ALL -- USING (auth.uid() = guru_id)
 
--- 3. SEMESTER
--- Semester di dalam satu tahun ajaran (misal Ganjil/Genap).
 create table semester (
-  id uuid primary key default gen_random_uuid(),
-  tahun_ajaran_id uuid not null references tahun_ajaran(id) on delete cascade,
+  id uuid not null default gen_random_uuid(),
+  tahun_ajaran_id uuid not null,
   nama text not null,
   aktif boolean default true,
-  dibuat_pada timestamp with time zone default now()
+  dibuat_pada timestamp with time zone default now(),
+  constraint semester_pkey primary key (id),
+  constraint semester_tahun_ajaran_id_fkey foreign key (tahun_ajaran_id) references tahun_ajaran(id)
 );
+-- RLS: "Guru akses semester lewat tahun ajaran sendiri" -- ALL --
+--      USING (EXISTS (SELECT 1 FROM tahun_ajaran WHERE tahun_ajaran.id = semester.tahun_ajaran_id AND tahun_ajaran.guru_id = auth.uid()))
+
 
 -- ============================================================
--- BAGIAN 2: STRUKTUR (KELAS, SISWA, JADWAL)
--- Tidak ikut diarsipkan/reset saat ganti semester, hanya saat
--- ganti tahun ajaran.
+-- KELAS, SISWA, JADWAL (struktur -- ikut tahun ajaran)
 -- ============================================================
-
--- 4. KELAS
--- Daftar kelas yang diampu tiap guru.
 create table kelas (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  nama_kelas text not null,
-  mata_pelajaran text not null,
-  dibuat_pada timestamp with time zone default now(),
-  token_publik text default (gen_random_uuid())::text, -- untuk halaman papan-poin publik
-  tahun_ajaran_id uuid references tahun_ajaran(id) on delete set null
-);
-
--- 5. SISWA
--- Daftar siswa di tiap kelas.
-create table siswa (
-  id uuid primary key default gen_random_uuid(),
-  kelas_id uuid not null references kelas(id) on delete cascade,
-  nama_siswa text not null,
-  nomor_presensi integer,
-  dibuat_pada timestamp with time zone default now()
-);
-
--- 6. JADWAL
--- Jadwal mengajar tetap tiap guru.
-create table jadwal (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  kelas_id uuid not null references kelas(id) on delete cascade,
-  hari text not null check (hari in ('Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu')),
-  jam_ke text not null, -- disimpan sebagai teks, misal "1-3" atau "7"
-  dibuat_pada timestamp with time zone default now()
-);
-
--- ============================================================
--- BAGIAN 3: KONTEN AKTIF (JURNAL, ABSENSI, NILAI, CATATAN)
--- Terikat ke semester_id, diarsipkan & dikosongkan tiap ganti
--- semester lewat fungsi arsipkan_semester().
--- ============================================================
-
--- 7. JURNAL
--- Catatan jurnal mengajar harian.
-create table jurnal (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  kelas_id uuid not null references kelas(id) on delete cascade,
-  tanggal date not null default current_date,
-  hari text not null,
-  jam_ke text not null,
-  materi text,
-  catatan text,
-  dibuat_pada timestamp with time zone default now(),
-  mapel text,                      -- nama mapel saat jurnal dibuat (arsip histori, terpisah dari kelas.mata_pelajaran)
-  dihapus_pada timestamp with time zone, -- soft-delete, belum termanfaatkan penuh
-  semester_id uuid references semester(id) on delete set null
-);
-
--- 8. ABSENSI
--- Status kehadiran + poin partisipasi tiap siswa untuk satu entri jurnal.
--- (Tabel "poin" versi lama sudah dilebur ke sini sebagai kolom poin & keterangan.)
-create table absensi (
-  id uuid primary key default gen_random_uuid(),
-  jurnal_id uuid not null references jurnal(id) on delete cascade,
-  siswa_id uuid not null references siswa(id) on delete cascade,
-  status text not null check (status in ('Hadir','Izin','Sakit','Alpha','Dispensasi')),
-  dibuat_pada timestamp with time zone default now(),
-  keterangan text,
-  poin integer not null default 3
-);
-
--- 9. CATATAN PERSIAPAN
--- Catatan rencana mengajar guru per kelas per tanggal.
-create table catatan_persiapan (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  kelas_id uuid not null references kelas(id) on delete cascade,
-  tanggal date not null,
-  teks text not null default '',
-  diperbarui_pada timestamp with time zone default now(),
-  semester_id uuid references semester(id) on delete set null
-);
-
--- 10. NILAI
--- Nilai penilaian bebas (jenis & nama_penilaian ditentukan guru sendiri).
-create table nilai (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  kelas_id uuid not null references kelas(id) on delete cascade,
-  siswa_id uuid not null references siswa(id) on delete cascade,
-  jenis text not null default 'ulangan',
-  nama_penilaian text not null,
-  nilai numeric not null,
-  tanggal date not null,
-  catatan text,
-  created_at timestamp with time zone not null default now(),
-  semester_id uuid references semester(id) on delete set null
-);
-
--- 11. FORMULA NILAI
--- Rumus Nilai Rapor per kelas, 1 rumus berlaku untuk semua siswa di kelas itu.
--- Rumus mereferensikan nama_penilaian, dievaluasi pakai library expr-eval di frontend.
-create table formula_nilai (
-  kelas_id uuid primary key references kelas(id) on delete cascade,
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  rumus text not null default '',
-  diperbarui_pada timestamp with time zone not null default now()
-);
-
--- ============================================================
--- BAGIAN 4: ARSIP
--- Struktur tabel identik dengan versi aktifnya, ditambah kolom
--- kadaluarsa_pada (7 hari sejak diarsipkan). Dihapus permanen
--- otomatis oleh Edge Function hapus-arsip-kadaluarsa (cron harian).
--- ============================================================
-
--- 12. ARSIP KELAS
-create table arsip_kelas (
-  id uuid primary key default gen_random_uuid(),
+  id uuid not null default gen_random_uuid(),
   guru_id uuid not null,
   nama_kelas text not null,
   mata_pelajaran text not null,
   dibuat_pada timestamp with time zone default now(),
   token_publik text default (gen_random_uuid())::text,
   tahun_ajaran_id uuid,
-  kadaluarsa_pada timestamp with time zone
+  constraint kelas_pkey primary key (id),
+  constraint kelas_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint kelas_tahun_ajaran_id_fkey foreign key (tahun_ajaran_id) references tahun_ajaran(id),
+  constraint kelas_token_publik_key unique (token_publik)
 );
+-- RLS: "Guru akses kelas sendiri" -- ALL -- USING (auth.uid() = guru_id)
 
--- 13. ARSIP SISWA
-create table arsip_siswa (
-  id uuid primary key default gen_random_uuid(),
+create table siswa (
+  id uuid not null default gen_random_uuid(),
   kelas_id uuid not null,
   nama_siswa text not null,
   nomor_presensi integer,
   dibuat_pada timestamp with time zone default now(),
-  kadaluarsa_pada timestamp with time zone
+  constraint siswa_pkey primary key (id),
+  constraint siswa_kelas_id_fkey foreign key (kelas_id) references kelas(id)
 );
+-- RLS: "Guru akses siswa sendiri" -- ALL --
+--      USING (kelas_id IN (SELECT kelas.id FROM kelas WHERE kelas.guru_id = auth.uid()))
 
--- 14. ARSIP JADWAL
-create table arsip_jadwal (
-  id uuid primary key default gen_random_uuid(),
+create table jadwal (
+  id uuid not null default gen_random_uuid(),
   guru_id uuid not null,
   kelas_id uuid not null,
   hari text not null,
   jam_ke text not null,
   dibuat_pada timestamp with time zone default now(),
-  kadaluarsa_pada timestamp with time zone
+  constraint jadwal_pkey primary key (id),
+  constraint jadwal_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint jadwal_kelas_id_fkey foreign key (kelas_id) references kelas(id),
+  constraint jadwal_hari_check check (hari = any (array['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu']))
 );
+-- RLS: "Guru akses jadwal sendiri" -- ALL -- USING (auth.uid() = guru_id)
 
--- 15. ARSIP JURNAL
-create table arsip_jurnal (
-  id uuid primary key default gen_random_uuid(),
+
+-- ============================================================
+-- JURNAL, ABSENSI, NILAI, CATATAN PERSIAPAN (konten -- ikut semester)
+-- ============================================================
+create table jurnal (
+  id uuid not null default gen_random_uuid(),
   guru_id uuid not null,
   kelas_id uuid not null,
-  tanggal date not null default current_date,
+  tanggal date not null default CURRENT_DATE,
   hari text not null,
   jam_ke text not null,
   materi text,
@@ -219,252 +123,363 @@ create table arsip_jurnal (
   mapel text,
   dihapus_pada timestamp with time zone,
   semester_id uuid,
-  kadaluarsa_pada timestamp with time zone
+  constraint jurnal_pkey primary key (id),
+  constraint jurnal_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint jurnal_kelas_id_fkey foreign key (kelas_id) references kelas(id),
+  constraint jurnal_semester_id_fkey foreign key (semester_id) references semester(id)
 );
+-- RLS: "Guru akses jurnal sendiri" -- ALL -- USING (auth.uid() = guru_id)
+-- Trigger: isi_semester_otomatis (BEFORE INSERT) -- isi semester_id otomatis
+--          dari semester aktif guru yang bersangkutan kalau kosong
 
--- 16. ARSIP ABSENSI
-create table arsip_absensi (
-  id uuid primary key default gen_random_uuid(),
+create table absensi (
+  id uuid not null default gen_random_uuid(),
   jurnal_id uuid not null,
   siswa_id uuid not null,
   status text not null,
   dibuat_pada timestamp with time zone default now(),
   keterangan text,
   poin integer not null default 3,
-  kadaluarsa_pada timestamp with time zone
+  constraint absensi_pkey primary key (id),
+  constraint absensi_jurnal_id_fkey foreign key (jurnal_id) references jurnal(id),
+  constraint absensi_siswa_id_fkey foreign key (siswa_id) references siswa(id),
+  constraint absensi_status_check check (status = any (array['Hadir','Izin','Sakit','Alpa','Dispensasi'])),
+  constraint absensi_poin_check check (poin >= 0 and poin <= 7)
 );
+-- RLS: "Guru akses absensi sendiri" -- ALL --
+--      USING (jurnal_id IN (SELECT jurnal.id FROM jurnal WHERE jurnal.guru_id = auth.uid()))
 
--- 17. ARSIP CATATAN PERSIAPAN
-create table arsip_catatan_persiapan (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null,
-  kelas_id uuid not null,
-  tanggal date not null,
-  teks text not null default '',
-  diperbarui_pada timestamp with time zone default now(),
-  semester_id uuid,
-  kadaluarsa_pada timestamp with time zone
-);
-
--- 18. ARSIP NILAI
-create table arsip_nilai (
-  id uuid primary key default gen_random_uuid(),
+create table nilai (
+  id uuid not null default gen_random_uuid(),
   guru_id uuid not null,
   kelas_id uuid not null,
   siswa_id uuid not null,
-  jenis text not null default 'ulangan',
+  jenis text not null default 'ulangan'::text,
+  nama_penilaian text not null,
+  nilai numeric not null,
+  tanggal date not null,
+  catatan text,
+  created_at timestamp with time zone not null default now(),
+  semester_id uuid,
+  constraint nilai_pkey primary key (id),
+  constraint nilai_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint nilai_kelas_id_fkey foreign key (kelas_id) references kelas(id),
+  constraint nilai_siswa_id_fkey foreign key (siswa_id) references siswa(id),
+  constraint nilai_semester_id_fkey foreign key (semester_id) references semester(id),
+  constraint nilai_jenis_check check (jenis = any (array['ulangan','tugas','bebas','akhir_semester'])),
+  constraint nilai_nilai_check check (nilai >= 0 and nilai <= 100)
+);
+-- RLS: "Guru kelola nilai miliknya sendiri" -- ALL -- USING & WITH CHECK (auth.uid() = guru_id)
+-- Trigger: isi_semester_otomatis (BEFORE INSERT) -- sama seperti jurnal
+
+create table catatan_persiapan (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
+  tanggal date not null,
+  teks text not null default ''::text,
+  diperbarui_pada timestamp with time zone default now(),
+  semester_id uuid,
+  constraint catatan_persiapan_pkey primary key (id),
+  constraint catatan_persiapan_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint catatan_persiapan_kelas_id_fkey foreign key (kelas_id) references kelas(id),
+  constraint catatan_persiapan_semester_id_fkey foreign key (semester_id) references semester(id),
+  constraint catatan_persiapan_guru_id_kelas_id_tanggal_key unique (guru_id, kelas_id, tanggal)
+);
+-- RLS: "Guru akses catatan sendiri" -- ALL -- USING (auth.uid() = guru_id)
+-- Trigger: isi_semester_otomatis (BEFORE INSERT) -- sama seperti jurnal
+
+create table formula_nilai (
+  kelas_id uuid not null,
+  guru_id uuid not null,
+  rumus text not null default ''::text,
+  diperbarui_pada timestamp with time zone not null default now(),
+  constraint formula_nilai_pkey primary key (kelas_id),
+  constraint formula_nilai_kelas_id_fkey foreign key (kelas_id) references kelas(id)
+  -- formula_nilai_guru_id_fkey terdeteksi tapi tabel referensi tidak
+  -- tertangkap introspeksi (kemungkinan mengarah ke profil_guru/auth.users)
+);
+-- RLS: "guru kelola formula miliknya sendiri" -- ALL -- USING & WITH CHECK (auth.uid() = guru_id)
+
+
+-- ============================================================
+-- ARSIP (hasil "Mulai Semester Baru" / "Mulai Tahun Ajaran Baru")
+-- Struktur identik tabel aktifnya + kolom kadaluarsa_pada
+-- ============================================================
+create table arsip_jurnal (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
+  tanggal date not null default CURRENT_DATE,
+  hari text not null,
+  jam_ke text not null,
+  materi text,
+  catatan text,
+  dibuat_pada timestamp with time zone default now(),
+  mapel text,
+  dihapus_pada timestamp with time zone,
+  semester_id uuid,
+  kadaluarsa_pada timestamp with time zone,
+  constraint arsip_jurnal_pkey primary key (id)
+);
+-- RLS: "Guru akses arsip jurnal sendiri" -- ALL -- USING (auth.uid() = guru_id)
+
+create table arsip_absensi (
+  id uuid not null default gen_random_uuid(),
+  jurnal_id uuid not null,
+  siswa_id uuid not null,
+  status text not null,
+  dibuat_pada timestamp with time zone default now(),
+  keterangan text,
+  poin integer not null default 3,
+  kadaluarsa_pada timestamp with time zone,
+  constraint arsip_absensi_pkey primary key (id),
+  constraint absensi_status_check check (status = any (array['Hadir','Izin','Sakit','Alpa','Dispensasi'])),
+  constraint absensi_poin_check check (poin >= 0 and poin <= 7)
+);
+-- RLS: "Guru akses arsip absensi lewat jurnal sendiri" -- ALL --
+--      USING (EXISTS (SELECT 1 FROM arsip_jurnal WHERE arsip_jurnal.id = arsip_absensi.jurnal_id AND arsip_jurnal.guru_id = auth.uid()))
+
+create table arsip_nilai (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
+  siswa_id uuid not null,
+  jenis text not null default 'ulangan'::text,
   nama_penilaian text not null,
   nilai numeric not null,
   tanggal date not null,
   catatan text,
   created_at timestamp with time zone not null default now(),
   kadaluarsa_pada timestamp with time zone,
-  semester_id uuid
+  semester_id uuid,
+  constraint arsip_nilai_pkey primary key (id),
+  constraint nilai_jenis_check check (jenis = any (array['ulangan','tugas','bebas','akhir_semester'])),
+  constraint nilai_nilai_check check (nilai >= 0 and nilai <= 100)
 );
+-- RLS: "Guru akses arsip nilai lewat kelas sendiri" -- ALL --
+--      USING (EXISTS (SELECT 1 FROM arsip_kelas WHERE arsip_kelas.id = arsip_nilai.kelas_id AND arsip_kelas.guru_id = auth.uid()))
 
--- 19. ARSIP REMINDER LOG
--- Mencatat reminder H-7/H-1 mana yang sudah terkirim, biar cron
--- hapus-arsip-kadaluarsa tidak kirim dobel.
-create table arsip_reminder_log (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid,
+create table arsip_catatan_persiapan (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
+  tanggal date not null,
+  teks text not null default ''::text,
+  diperbarui_pada timestamp with time zone default now(),
+  semester_id uuid,
   kadaluarsa_pada timestamp with time zone,
-  tipe text, -- 'H-7' atau 'H-1'
-  dikirim_pada timestamp with time zone default now()
+  constraint arsip_catatan_persiapan_pkey primary key (id),
+  constraint arsip_catatan_persiapan_guru_id_kelas_id_tanggal_key unique (guru_id, kelas_id, tanggal)
 );
+-- RLS: "Guru akses arsip catatan sendiri" -- ALL -- USING (auth.uid() = guru_id)
+
+create table arsip_kelas (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  nama_kelas text not null,
+  mata_pelajaran text not null,
+  dibuat_pada timestamp with time zone default now(),
+  token_publik text default (gen_random_uuid())::text,
+  tahun_ajaran_id uuid,
+  kadaluarsa_pada timestamp with time zone,
+  constraint arsip_kelas_pkey primary key (id),
+  constraint arsip_kelas_token_publik_key unique (token_publik)
+);
+-- RLS: "Guru akses arsip kelas sendiri" -- ALL -- USING (auth.uid() = guru_id)
+
+create table arsip_siswa (
+  id uuid not null default gen_random_uuid(),
+  kelas_id uuid not null,
+  nama_siswa text not null,
+  nomor_presensi integer,
+  dibuat_pada timestamp with time zone default now(),
+  kadaluarsa_pada timestamp with time zone,
+  constraint arsip_siswa_pkey primary key (id)
+);
+-- RLS: "Guru akses arsip siswa lewat kelas sendiri" -- ALL --
+--      USING (EXISTS (SELECT 1 FROM arsip_kelas WHERE arsip_kelas.id = arsip_siswa.kelas_id AND arsip_kelas.guru_id = auth.uid()))
+
+create table arsip_jadwal (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
+  hari text not null,
+  jam_ke text not null,
+  dibuat_pada timestamp with time zone default now(),
+  kadaluarsa_pada timestamp with time zone,
+  constraint arsip_jadwal_pkey primary key (id),
+  constraint jadwal_hari_check check (hari = any (array['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu']))
+);
+-- RLS: "Guru akses arsip jadwal sendiri" -- ALL -- USING (auth.uid() = guru_id)
+
 
 -- ============================================================
--- BAGIAN 5: LAIN-LAIN
+-- REMINDER & LOG (Edge Functions terjadwal)
 -- ============================================================
-
--- 20. REMINDER LOG
--- Mencatat reminder harian "jurnal belum diisi" mana yang sudah
--- terkirim, biar cron reminder-jurnal-harian tidak kirim dobel.
 create table reminder_log (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
-  kelas_id uuid not null references kelas(id) on delete cascade,
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
+  kelas_id uuid not null,
   tanggal date not null,
   jam_ke text not null,
-  dikirim_pada timestamp with time zone default now()
+  dikirim_pada timestamp with time zone default now(),
+  constraint reminder_log_pkey primary key (id),
+  constraint reminder_log_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint reminder_log_kelas_id_fkey foreign key (kelas_id) references kelas(id),
+  constraint reminder_log_guru_id_kelas_id_tanggal_jam_ke_key unique (guru_id, kelas_id, tanggal, jam_ke)
 );
+-- Dipakai oleh Edge Function reminder-jurnal (cron harian) supaya tidak kirim reminder dobel
 
--- 21. LOG TRANSAKSI MAYAR
--- Log mentah webhook Mayar (aktivasi paket berbayar), diisi oleh
--- Cloudflare Worker, dibaca manual/admin panel untuk audit.
+create table arsip_reminder_log (
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid,
+  kadaluarsa_pada timestamp with time zone,
+  tipe text,
+  dikirim_pada timestamp with time zone default now(),
+  constraint arsip_reminder_log_pkey primary key (id),
+  constraint arsip_reminder_log_guru_id_fkey foreign key (guru_id) references profil_guru(id)
+);
+-- Dipakai oleh Edge Function hapus-arsip-kadaluarsa untuk log reminder H-7/H-1
+-- sebelum arsip dihapus permanen (tipe: 'H-7' atau 'H-1')
+
+
+-- ============================================================
+-- TRANSAKSI, MASUKAN, & TESTIMONI
+-- ============================================================
 create table log_transaksi_mayar (
-  id uuid primary key default gen_random_uuid(),
+  id uuid not null default gen_random_uuid(),
   event_type text not null,
   email_pembayar text not null,
   nama_pembayar text,
   nama_produk text,
   paket_terdeteksi text,
-  status text not null default 'menunggu_diproses',
+  status text not null default 'menunggu_diproses'::text,
   guru_id uuid,
   payload_mentah jsonb,
   catatan_admin text,
   diterima_pada timestamp with time zone not null default now(),
-  diproses_pada timestamp with time zone
+  diproses_pada timestamp with time zone,
+  constraint log_transaksi_mayar_pkey primary key (id),
+  constraint log_transaksi_mayar_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint log_transaksi_mayar_status_check check (status = any (array[
+    'berhasil','butuh_review_manual','ruang_tunggu_pendaftaran','gagal_lainnya','notifikasi_nonaktif'
+  ]))
 );
+-- Tidak ada RLS eksplisit ditemukan -- akses murni lewat function admin
+-- (get_log_transaksi_admin, selesaikan_log_transaksi_admin, hapus_log_berhasil_admin)
+-- Trigger: auto_match_transaksi_mayar (di tabel auth.users, AFTER INSERT) --
+--          cocokkan transaksi Mayar yang mendarat duluan (status
+--          'ruang_tunggu_pendaftaran') dengan guru yang baru daftar
+--          berdasarkan email, aktifkan paket otomatis
 
--- 22. MASUKAN PENGGUNA
--- Kritik/saran/masukan dari guru lewat tab "Info & Masukan".
 create table masukan_pengguna (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
   kategori text not null,
   pesan text not null,
   dibuat_pada timestamp with time zone not null default now(),
   balasan_admin text,
-  dibalas_pada timestamp with time zone
+  dibalas_pada timestamp with time zone,
+  constraint masukan_pengguna_pkey primary key (id),
+  constraint masukan_pengguna_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint masukan_pengguna_kategori_check check (kategori = any (array['masukan','kritik','saran','bug','lainnya']))
 );
+-- RLS: 3 policy terpisah per operasi --
+--   SELECT: "guru lihat masukan sendiri" -- USING (auth.uid() = guru_id)
+--   INSERT: "guru insert masukan sendiri" -- WITH CHECK (auth.uid() = guru_id)
+--   DELETE: "guru hapus masukan sendiri" -- USING (auth.uid() = guru_id)
+--   (balas_admin hanya lewat function balas_masukan_admin, khusus email admin)
 
--- 23. TESTIMONI
--- Testimoni guru (perlu approval admin sebelum tampil di landing page).
 create table testimoni (
-  id uuid primary key default gen_random_uuid(),
-  guru_id uuid not null references profil_guru(id) on delete cascade,
+  id uuid not null default gen_random_uuid(),
+  guru_id uuid not null,
   nama_tampilan text not null,
   rating integer not null,
   teks text not null,
-  status text not null default 'pending',
+  status text not null default 'pending'::text,
   dibuat_pada timestamp with time zone not null default now(),
-  diproses_pada timestamp with time zone
+  diproses_pada timestamp with time zone,
+  constraint testimoni_pkey primary key (id),
+  constraint testimoni_guru_id_fkey foreign key (guru_id) references profil_guru(id),
+  constraint testimoni_rating_check check (rating >= 1 and rating <= 5),
+  constraint testimoni_status_check check (status = any (array['pending','approved','rejected']))
 );
+-- RLS: 3 policy terpisah per operasi (sama pola dengan masukan_pengguna)
+-- Trigger: cek_batas_testimoni (BEFORE INSERT) -- tolak kalau testimoni
+--          sebelumnya masih 'pending' ATAU sudah kirim dalam 30 hari terakhir
+
 
 -- ============================================================
--- KEAMANAN: Row Level Security (RLS)
--- Supaya guru A tidak bisa lihat/ubah data guru B.
+-- FUNCTION / RPC (Postgres, dipanggil dari dashboard.html via supabase.rpc())
+-- ============================================================
+-- arsipkan_semester(nama_semester_baru text)
+--   Pindahkan jurnal/absensi/nilai/catatan_persiapan semester aktif guru
+--   ke tabel arsip_* (kadaluarsa 7 hari), nonaktifkan semester lama,
+--   buat semester baru aktif.
 --
--- CATATAN: arsip_reminder_log, log_transaksi_mayar, dan
--- reminder_log TIDAK punya policy RLS guru (hasil pengecekan
--- pg_policies) — akses ke 3 tabel ini hanya lewat Edge Function
--- pakai service_role_key (otomatis bypass RLS), bukan lewat
--- Supabase client browser guru. Ini sengaja, bukan celah keamanan,
--- SELAMA tidak ada kode frontend yang mengakses tabel ini
--- langsung pakai anon key.
+-- arsipkan_tahun_ajaran(nama_tahun_ajaran_baru text, nama_semester_baru text)
+--   Panggil arsipkan_semester() dulu, lalu arsipkan Kelas/Siswa/Jadwal
+--   ke arsip_kelas/arsip_siswa/arsip_jadwal (kadaluarsa 7 hari), hapus
+--   dari tabel aktif, nonaktifkan tahun ajaran lama, buat tahun ajaran
+--   + semester baru.
+--
+-- get_papan_poin_publik(p_token text) -- RETURNS TABLE
+--   Diakses publik (tanpa login) lewat token_publik kelas, untuk
+--   halaman papan-poin.html. Menolak jika tanggal_berakhir guru sudah lewat.
+--
+-- get_nama_kelas_publik(p_token text) -- RETURNS text
+--   Pendukung get_papan_poin_publik, ambil nama kelas dari token publik.
+--
+-- Function khusus admin (semua mengecek auth.email() = 'dimasmansaba@gmail.com'):
+--   get_statistik_pengguna_admin() -- rekap jumlah jurnal & tanggal
+--     terakhir aktif per guru, untuk panel admin.
+--   get_log_transaksi_admin(), selesaikan_log_transaksi_admin(p_id, p_catatan),
+--     hapus_log_berhasil_admin() -- kelola log_transaksi_mayar.
+--   get_semua_masukan_admin(), balas_masukan_admin(p_id, p_balasan) --
+--     kelola masukan_pengguna.
+--   get_semua_testimoni_admin(), proses_testimoni_admin(p_id, p_status) --
+--     kelola testimoni (approve/reject).
+--
+-- get_testimoni_approved() -- RETURNS TABLE
+--   Publik, ambil testimoni yang sudah di-approve (untuk landing page).
+
+
 -- ============================================================
+-- TRIGGER (terpasang di tabel auth.users atau tabel konten)
+-- ============================================================
+-- buat_profil_guru_otomatis  (AFTER INSERT ON auth.users)
+--   Insert baris profil_guru otomatis saat user baru daftar. Ambil nama
+--   dari raw_user_meta_data, coalesce urutan: nama_lengkap -> full_name
+--   (Google OAuth) -> name -> default 'Guru Baru'. Paket awal = 'trial',
+--   aktif 7 hari.
+--
+-- buat_periode_awal_guru_baru  (AFTER INSERT ON auth.users, atau setelah
+--   profil_guru dibuat)
+--   Buat tahun_ajaran '2026/2027' + semester 'Ganjil' awal untuk guru baru.
+--
+-- auto_match_transaksi_mayar  (AFTER INSERT ON auth.users)
+--   Cocokkan transaksi Mayar yang mendarat sebelum guru sempat daftar
+--   (status 'ruang_tunggu_pendaftaran', dicocokkan lewat email) --
+--   otomatis aktifkan paket & set tanggal_berakhir sesuai paket terdeteksi.
+--
+-- isi_semester_otomatis  (BEFORE INSERT ON jurnal, nilai, catatan_persiapan)
+--   Isi semester_id otomatis dari semester aktif guru kalau kosong saat insert.
+--
+-- cek_batas_testimoni  (BEFORE INSERT ON testimoni)
+--   Tolak insert kalau testimoni sebelumnya masih 'pending' atau sudah
+--   kirim dalam 30 hari terakhir.
 
-alter table profil_guru enable row level security;
-alter table tahun_ajaran enable row level security;
-alter table semester enable row level security;
-alter table kelas enable row level security;
-alter table siswa enable row level security;
-alter table jadwal enable row level security;
-alter table jurnal enable row level security;
-alter table absensi enable row level security;
-alter table catatan_persiapan enable row level security;
-alter table nilai enable row level security;
-alter table formula_nilai enable row level security;
-alter table arsip_kelas enable row level security;
-alter table arsip_siswa enable row level security;
-alter table arsip_jadwal enable row level security;
-alter table arsip_jurnal enable row level security;
-alter table arsip_absensi enable row level security;
-alter table arsip_catatan_persiapan enable row level security;
-alter table arsip_nilai enable row level security;
-alter table masukan_pengguna enable row level security;
-alter table testimoni enable row level security;
 
--- Guru hanya bisa akses profilnya sendiri
-create policy "Guru akses profil sendiri" on profil_guru
-  for all using (auth.uid() = id);
-
--- Guru hanya bisa akses tahun ajaran miliknya sendiri
-create policy "Guru akses tahun ajaran sendiri" on tahun_ajaran
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses semester lewat tahun ajaran miliknya sendiri
-create policy "Guru akses semester lewat tahun ajaran sendiri" on semester
-  for all using (
-    exists (select 1 from tahun_ajaran where tahun_ajaran.id = semester.tahun_ajaran_id and tahun_ajaran.guru_id = auth.uid())
-  );
-
--- Guru hanya bisa akses kelas miliknya sendiri
-create policy "Guru akses kelas sendiri" on kelas
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses siswa dari kelas miliknya sendiri
-create policy "Guru akses siswa sendiri" on siswa
-  for all using (
-    kelas_id in (select id from kelas where guru_id = auth.uid())
-  );
-
--- Guru hanya bisa akses jadwal miliknya sendiri
-create policy "Guru akses jadwal sendiri" on jadwal
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses jurnal miliknya sendiri
-create policy "Guru akses jurnal sendiri" on jurnal
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses absensi dari jurnal miliknya sendiri
-create policy "Guru akses absensi sendiri" on absensi
-  for all using (
-    jurnal_id in (select id from jurnal where guru_id = auth.uid())
-  );
-
--- Guru hanya bisa akses catatan persiapan miliknya sendiri
-create policy "Guru akses catatan sendiri" on catatan_persiapan
-  for all using (auth.uid() = guru_id);
-
--- Guru kelola nilai miliknya sendiri (butuh with_check karena ada INSERT)
-create policy "Guru kelola nilai miliknya sendiri" on nilai
-  for all using (auth.uid() = guru_id) with check (auth.uid() = guru_id);
-
--- Guru kelola formula miliknya sendiri (butuh with_check karena ada INSERT)
-create policy "guru kelola formula miliknya sendiri" on formula_nilai
-  for all using (auth.uid() = guru_id) with check (auth.uid() = guru_id);
-
--- Guru hanya bisa akses arsip kelas miliknya sendiri
-create policy "Guru akses arsip kelas sendiri" on arsip_kelas
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses arsip siswa lewat arsip kelas miliknya sendiri
-create policy "Guru akses arsip siswa lewat kelas sendiri" on arsip_siswa
-  for all using (
-    exists (select 1 from arsip_kelas where arsip_kelas.id = arsip_siswa.kelas_id and arsip_kelas.guru_id = auth.uid())
-  );
-
--- Guru hanya bisa akses arsip jadwal miliknya sendiri
-create policy "Guru akses arsip jadwal sendiri" on arsip_jadwal
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses arsip jurnal miliknya sendiri
-create policy "Guru akses arsip jurnal sendiri" on arsip_jurnal
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses arsip absensi lewat arsip jurnal miliknya sendiri
-create policy "Guru akses arsip absensi lewat jurnal sendiri" on arsip_absensi
-  for all using (
-    exists (select 1 from arsip_jurnal where arsip_jurnal.id = arsip_absensi.jurnal_id and arsip_jurnal.guru_id = auth.uid())
-  );
-
--- Guru hanya bisa akses arsip catatan miliknya sendiri
-create policy "Guru akses arsip catatan sendiri" on arsip_catatan_persiapan
-  for all using (auth.uid() = guru_id);
-
--- Guru hanya bisa akses arsip nilai lewat arsip kelas miliknya sendiri
-create policy "Guru akses arsip nilai lewat kelas sendiri" on arsip_nilai
-  for all using (
-    exists (select 1 from arsip_kelas where arsip_kelas.id = arsip_nilai.kelas_id and arsip_kelas.guru_id = auth.uid())
-  );
-
--- Masukan pengguna: guru cuma bisa insert & lihat & hapus masukan sendiri
--- (TIDAK ADA policy UPDATE — guru tidak bisa edit masukan setelah kirim,
--- balasan_admin diisi lewat admin panel pakai service_role_key)
-create policy "guru insert masukan sendiri" on masukan_pengguna
-  for insert with check (auth.uid() = guru_id);
-create policy "guru lihat masukan sendiri" on masukan_pengguna
-  for select using (auth.uid() = guru_id);
-create policy "guru hapus masukan sendiri" on masukan_pengguna
-  for delete using (auth.uid() = guru_id);
-
--- Testimoni: guru cuma bisa insert & lihat & hapus testimoni sendiri
--- (TIDAK ADA policy UPDATE — status approval diubah admin lewat service_role_key)
-create policy "guru insert testimoni sendiri" on testimoni
-  for insert with check (auth.uid() = guru_id);
-create policy "guru lihat testimoni sendiri" on testimoni
-  for select using (auth.uid() = guru_id);
-create policy "guru hapus testimoni sendiri" on testimoni
-  for delete using (auth.uid() = guru_id);
+-- ============================================================
+-- EDGE FUNCTIONS (Deno, di folder supabase/functions/)
+-- ============================================================
+-- reminder-jurnal            -- cron harian 15:30 WIB (Sen-Sab), kirim
+--                               email (Resend) ke guru yang jadwal hari
+--                               itu belum diisi jurnalnya. Log ke reminder_log.
+-- backup-rekap-bulanan       -- kirim email rekap bulanan (statistik +
+--                               lampiran Excel jurnal & nilai) ke tiap guru.
+-- hapus-arsip-kadaluarsa     -- cron harian 08:00 WIB, hapus permanen baris
+--                               arsip_* yang kadaluarsa_pada sudah lewat +
+--                               kirim reminder email H-7/H-1 (log ke
+--                               arsip_reminder_log).
