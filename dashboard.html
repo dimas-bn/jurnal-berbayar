@@ -3888,8 +3888,34 @@
         <div class="rekap-actions">
           <button type="button" class="print-btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button>
           <button type="button" class="print-btn" id="btnExportRekapExcel" style="background:#5B6B8C;">📤 Export ke Excel</button>
+          <button type="button" class="print-btn" id="btnBagikanWhatsApp" style="background:#25D366;">💬 Bagikan ke WhatsApp</button>
         </div>
         </div>`;
+
+      document.getElementById('btnBagikanWhatsApp').addEventListener('click', () => {
+        const rataHadirKelas = Math.round(rowsData.reduce((t, r) => t + r.persenHadir, 0) / rowsData.length);
+        const rataPoinKelas = Math.round((rowsData.reduce((t, r) => t + r.rataPoin, 0) / rowsData.length) * 10) / 10;
+
+        const perluPerhatian = [...rowsData].sort((a, b) => b.alpa - a.alpa).slice(0, 3).filter(r => r.alpa > 0);
+        const teratas = [...rowsData].sort((a, b) => b.rataPoin - a.rataPoin).slice(0, 3);
+
+        let teks = `📚 *Rekap ${data.kelas}*\n${namaBulan} ${data.tahun} — Total pertemuan: ${data.totalPertemuan} kali\n\n`;
+        teks += `Rata-rata kehadiran kelas: ${rataHadirKelas}%\n`;
+        teks += `Rata-rata poin keaktifan kelas: ${rataPoinKelas}\n`;
+
+        if (teratas.length) {
+          teks += `\n⭐ Siswa poin keaktifan tertinggi:\n`;
+          teratas.forEach((r, i) => { teks += `${i + 1}. ${r.nama} (poin ${r.rataPoin})\n`; });
+        }
+        if (perluPerhatian.length) {
+          teks += `\n⚠️ Perlu perhatian (Alpa terbanyak):\n`;
+          perluPerhatian.forEach((r) => { teks += `- ${r.nama} (${r.alpa}x Alpa)\n`; });
+        }
+
+        teks += `\nDikirim dari Jurnal Mengajar Online (JMO)`;
+
+        window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank');
+      });
 
       const scrollTop = document.getElementById('rekapScrollTop');
       const tableWrap = document.getElementById('rekapTableWrap');
@@ -4657,6 +4683,5 @@
     });
     window.addEventListener('online', cekVersiTerbaruJMO);
   </script>
-  <script src="voice-input.js"></script>
 </body>
 </html>
