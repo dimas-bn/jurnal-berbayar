@@ -3011,8 +3011,7 @@
       document.getElementById('materi').value = '';
       document.getElementById('btnSalinTerakhir').style.display = 'none';
       document.getElementById('siswaList').innerHTML = '<p class="empty-hint">Pilih kelas dahulu untuk memuat daftar siswa.</p>';
-      updateJadwalSuggest();
-      muatCatatan();
+      initTanggal();
     }
     document.getElementById('btnBatalEdit').addEventListener('click', resetForm);
 
