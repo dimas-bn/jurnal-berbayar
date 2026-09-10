@@ -39,6 +39,14 @@
   btnMic.textContent = '🎙️ Rekam';
   grupTombol.insertBefore(btnMic, grupTombol.firstChild);
 
+  // Keterangan dukungan browser -- halus, tidak mengganggu, memakai gaya
+  // hint yang sama dengan keterangan "Jam ke-" di form ini (var(--muted)).
+  const infoBrowser = document.createElement('div');
+  infoBrowser.style.cssText = 'font-size:11px; color:var(--muted); margin-top:4px;';
+  infoBrowser.textContent =
+    '🎙️ Rekam suara berjalan lancar di Chrome (HP Android & laptop). Belum didukung di Firefox, dan masih terbatas di Safari/iPhone.';
+  textarea.insertAdjacentElement('afterend', infoBrowser);
+
   if (!SpeechRecognitionCtor) {
     btnMic.addEventListener('click', () => {
       tampilkanStatus('Fitur rekam suara belum didukung di browser ini -- coba buka pakai Chrome.');
