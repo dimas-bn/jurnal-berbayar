@@ -796,8 +796,10 @@
     }
 
     @media (max-width: 600px) {
-      #btnKeAtas {  /* ganti sesuai selector aslinya */
-        bottom: 230px;
+      #btnKeAtas,
+      #btnKeAtas.geser-atas {
+        bottom: 295px;
+        right: 12px;
       }
     }
 
@@ -933,7 +935,7 @@
       border-radius: 6px;
       background: #fff;
       color: var(--ink, #1E2B22);
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       font-family: 'IBM Plex Sans', sans-serif;
     }
@@ -941,7 +943,7 @@
     /* khusus mobile: naikkan lebih tinggi lagi krn ada bar "Simpan Jurnal" */
     @media (max-width: 600px) {
       .font-size-control {
-        bottom: 140px;
+        bottom: 145px;
         right: 12px;
       }
     }
