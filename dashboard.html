@@ -764,7 +764,7 @@
     #btnKeAtas {
       position: fixed;
       right: 26px;
-      bottom: 50px;
+      bottom: 180px;
       width: 44px;
       height: 44px;
       border-radius: 50%;
@@ -794,6 +794,13 @@
       justify-content: space-between;
       gap: 10px;
     }
+
+    @media (max-width: 600px) {
+      #btnKeAtas {  /* ganti sesuai selector aslinya */
+        bottom: 230px;
+      }
+    }
+
     header.app-header .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
     header.app-header img { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
     header.app-header h1 {
@@ -907,10 +914,11 @@
 
     .font-size-control {
       position: fixed;
-      bottom: 20px;
       right: 20px;
+      bottom: 90px;      /* dinaikkan dari 20px, kasih jarak ke tombol atas */
       z-index: 9999;
       display: flex;
+      flex-direction: column;   /* <-- ini yang bikin vertikal */
       gap: 4px;
       background: var(--paper, #F6F2E4);
       border: 1px solid var(--ink, #1E2B22);
@@ -929,7 +937,14 @@
       cursor: pointer;
       font-family: 'IBM Plex Sans', sans-serif;
     }
-    .font-size-control button:hover { background: var(--paper, #F6F2E4); }
+
+    /* khusus mobile: naikkan lebih tinggi lagi krn ada bar "Simpan Jurnal" */
+    @media (max-width: 600px) {
+      .font-size-control {
+        bottom: 140px;
+        right: 12px;
+      }
+    }
 
   </style>
 </head>
