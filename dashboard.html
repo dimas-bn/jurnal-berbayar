@@ -2653,6 +2653,7 @@
         if (!navigator.onLine && !editingId) {
           simpanDraftLokal({ guru_id: guruId, kelas_id: kelasId, tanggal, hari, jam_ke: jamKe, mapel, materi, siswaPayload });
           tampilkanIndikatorDraft();
+          hapusAutosave();
           showToast('ok', 'Offline -- jurnal disimpan sebagai draft, akan otomatis terkirim saat online.');
           btn.disabled = false;
           btn.textContent = 'Simpan';
@@ -2686,6 +2687,7 @@
         const sedangEdit = !!editingId;
         showToast('ok', (sedangEdit ? 'Perubahan tersimpan — ' : 'Tersimpan — ') + hari + ', jurnal & absensi ' + siswaPayload.length + ' siswa berhasil dicatat.');
         resetForm();
+        hapusAutosave();
         btn.disabled = false;
         cekPengingatHariIni();
       } catch (err) {
@@ -3054,6 +3056,75 @@
       initTanggal();
     }
     document.getElementById('btnBatalEdit').addEventListener('click', resetForm);
+
+    // ============== AUTO-SIMPAN DRAFT KETIK (Isi Jurnal) ==============
+    const AUTOSAVE_KEY = 'jmo_autosave_isi_jurnal';
+    let autosaveTimer = null;
+
+    function ambilSnapshotForm() {
+      return {
+        tanggal: document.getElementById('tanggal').value,
+        kelas: document.getElementById('kelas').value,
+        jamDari: document.getElementById('jamDari').value,
+        jamSampai: document.getElementById('jamSampai').value,
+        mapel: document.getElementById('mapel').value,
+        materi: document.getElementById('materi').value,
+        disimpanPada: Date.now()
+      };
+    }
+
+    function simpanAutosave() {
+      const snap = ambilSnapshotForm();
+      if (!snap.materi && !snap.mapel && !snap.jamDari) {
+        localStorage.removeItem(AUTOSAVE_KEY);
+        return;
+      }
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snap));
+    }
+
+    function jadwalkanAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(simpanAutosave, 1200);
+    }
+
+    function hapusAutosave() {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    }
+
+    function tawarkanPulihkanAutosave() {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) return;
+      let snap;
+      try { snap = JSON.parse(raw); } catch (e) { hapusAutosave(); return; }
+      if (!snap.materi && !snap.mapel && !snap.jamDari) { hapusAutosave(); return; }
+
+      // draft lebih tua dari 24 jam dianggap basi
+      if (Date.now() - (snap.disimpanPada || 0) > 24 * 60 * 60 * 1000) { hapusAutosave(); return; }
+
+      const pulihkan = confirm('Ada draft jurnal yang belum sempat tersimpan (mungkin sempat terputus). Pulihkan draft tersebut?');
+      if (pulihkan) {
+        if (snap.tanggal) document.getElementById('tanggal').value = snap.tanggal;
+        if (snap.kelas) {
+          const selKelas = document.getElementById('kelas');
+          selKelas.value = snap.kelas;
+          selKelas.dispatchEvent(new Event('change')); // biar daftar siswa & logic lain ikut jalan seperti biasa
+        }
+        document.getElementById('jamDari').value = snap.jamDari || '';
+        document.getElementById('jamSampai').value = snap.jamSampai || '';
+        document.getElementById('mapel').value = snap.mapel || '';
+        document.getElementById('materi').value = snap.materi || '';
+        showToast('ok', 'Draft berhasil dipulihkan.');
+      } else {
+        hapusAutosave();
+      }
+    }
+
+    ['tanggal', 'kelas', 'jamDari', 'jamSampai', 'mapel', 'materi'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', jadwalkanAutosave);
+    });
+
+    document.addEventListener('DOMContentLoaded', tawarkanPulihkanAutosave);
 
     document.getElementById('btnSalinMateri').addEventListener('click', async function() {
       const teks = document.getElementById('materi').value;
