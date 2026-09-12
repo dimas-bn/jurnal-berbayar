@@ -90,9 +90,18 @@ Deno.serve(async (req) => {
         barisNilai.push([n.tanggal, petaKelas.get(n.kelas_id) ?? "", petaSiswa.get(n.siswa_id) ?? "", n.jenis, n.nama_penilaian, n.nilai, n.catatan ?? ""]);
       });
 
+      const { data: catatanArsip } = await supabase.from("arsip_catatan_persiapan")
+        .select("tanggal, teks, kelas_id")
+        .eq("guru_id", guru_id).eq("kadaluarsa_pada", kadaluarsa);
+      const barisCatatan = [["Tanggal", "Kelas", "Catatan Persiapan"]];
+      (catatanArsip ?? []).forEach((c) => {
+        barisCatatan.push([c.tanggal, petaKelas.get(c.kelas_id) ?? "", c.teks]);
+      });
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(barisJurnal), "Jurnal & Absensi");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(barisNilai), "Nilai");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(barisCatatan), "Catatan Persiapan");
       const buffer = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
       return buffer;
     }
