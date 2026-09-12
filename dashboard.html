@@ -2250,6 +2250,16 @@
       ]);
       XLSX.utils.book_append_sheet(wb, wsNilai, 'Nilai');
 
+      // Sheet 6: Catatan Persiapan
+      const { data: catatanData } = await db.from('catatan_persiapan')
+        .select('tanggal, teks, kelas:kelas_id (nama_kelas)')
+        .eq('guru_id', guruId).order('tanggal');
+      const wsCatatan = XLSX.utils.aoa_to_sheet([
+        ['Tanggal', 'Kelas', 'Catatan Persiapan'],
+        ...(catatanData || []).map(c => [c.tanggal, c.kelas?.nama_kelas || '', c.teks])
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsCatatan, 'Catatan Persiapan');
+
       XLSX.writeFile(wb, `Backup-Lengkap-JMO-${tanggalLokalISO(new Date())}.xlsx`);
 
       btn.disabled = false;
