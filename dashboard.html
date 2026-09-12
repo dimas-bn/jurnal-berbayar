@@ -1338,6 +1338,7 @@
 
       <!-- SUB: PERIODE (Semester & Tahun Ajaran) -->
       <div id="sub-periode" style="display:none;">
+        <button type="button" class="entry-btn" id="btnDownloadSemuaData" style="width:100%; margin-bottom:14px; background:#2A4095; color:#fff; border-color:#2A4095;">💾 Download Semua Data Saya (Backup Lengkap)</button>
         <div id="infoPeriodeAktif" style="background:var(--paper); border-radius:12px; padding:16px; margin-bottom:18px; text-align:center;">
           Memuat info periode...
         </div>
@@ -2137,7 +2138,7 @@
       new QRCode(target, { text: linkQrAktif, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
       document.getElementById('modalQrPapan').style.display = 'flex';
     }
-    
+
     async function salinLinkDariModalQr() {
       try {
         await navigator.clipboard.writeText(linkQrAktif);
@@ -2192,6 +2193,69 @@
       document.getElementById('infoPeriodeAktif').innerHTML =
         `<b>Tahun Ajaran Aktif:</b> ${ta ? escapeHtml(ta.nama) : '-'}<br><b>Semester Aktif:</b> ${sem ? escapeHtml(sem.nama) : '-'}`;
     }
+
+    async function downloadSemuaDataSaya() {
+      const btn = document.getElementById('btnDownloadSemuaData');
+      btn.disabled = true;
+      btn.textContent = '⏳ Menyiapkan file, mohon tunggu…';
+
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Kelas
+      const { data: kelasData } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran').eq('guru_id', guruId).order('nama_kelas');
+      const petaKelas = new Map((kelasData || []).map(k => [k.id, k.nama_kelas]));
+      const wsKelas = XLSX.utils.aoa_to_sheet([
+        ['Nama Kelas', 'Mata Pelajaran'],
+        ...(kelasData || []).map(k => [k.nama_kelas, k.mata_pelajaran || ''])
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsKelas, 'Kelas');
+
+      // Sheet 2: Siswa (semua kelas sekaligus)
+      const { data: siswaData } = await db.from('siswa').select('kelas_id, nomor_presensi, nama_siswa').order('kelas_id, nomor_presensi');
+      const wsSiswa = XLSX.utils.aoa_to_sheet([
+        ['Kelas', 'No. Presensi', 'Nama Siswa'],
+        ...(siswaData || []).map(s => [petaKelas.get(s.kelas_id) || '', s.nomor_presensi ?? '', s.nama_siswa])
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsSiswa, 'Siswa');
+
+      // Sheet 3: Jadwal
+      const urutanHari = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+      const { data: jadwalData } = await db.from('jadwal').select('hari, jam_ke, kelas:kelas_id (nama_kelas)').eq('guru_id', guruId);
+      const jadwalSorted = (jadwalData || []).slice().sort((a, b) => urutanHari.indexOf(a.hari) - urutanHari.indexOf(b.hari));
+      const wsJadwal = XLSX.utils.aoa_to_sheet([
+        ['Hari', 'Jam Ke', 'Kelas'],
+        ...jadwalSorted.map(j => [j.hari, j.jam_ke, j.kelas?.nama_kelas || '-'])
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsJadwal, 'Jadwal');
+
+      // Sheet 4: Jurnal & Absensi
+      const { data: jurnalData } = await db.from('jurnal')
+        .select('tanggal, hari, jam_ke, mapel, materi, kelas:kelas_id (nama_kelas), absensi (status, keterangan, poin, siswa:siswa_id (nama_siswa))')
+        .eq('guru_id', guruId).is('dihapus_pada', null).order('tanggal');
+      const barisJurnal = [['Tanggal','Hari','Jam Ke','Kelas','Mapel','Materi','Nama Siswa','Status','Keterangan','Poin']];
+      (jurnalData || []).forEach(j => {
+        (j.absensi || []).forEach(a => {
+          barisJurnal.push([j.tanggal, j.hari, j.jam_ke, j.kelas?.nama_kelas || '', j.mapel || '', j.materi || '', a.siswa?.nama_siswa || '', a.status, a.keterangan || '', a.poin]);
+        });
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(barisJurnal), 'Jurnal & Absensi');
+
+      // Sheet 5: Nilai (mentah, per input)
+      const { data: nilaiData } = await db.from('nilai')
+        .select('tanggal, jenis, nama_penilaian, nilai, catatan, kelas:kelas_id (nama_kelas), siswa:siswa_id (nama_siswa)')
+        .eq('guru_id', guruId).order('tanggal');
+      const wsNilai = XLSX.utils.aoa_to_sheet([
+        ['Tanggal', 'Kelas', 'Nama Siswa', 'Jenis', 'Nama Penilaian', 'Nilai', 'Catatan'],
+        ...(nilaiData || []).map(n => [n.tanggal, n.kelas?.nama_kelas || '', n.siswa?.nama_siswa || '', n.jenis, n.nama_penilaian, n.nilai, n.catatan || ''])
+      ]);
+      XLSX.utils.book_append_sheet(wb, wsNilai, 'Nilai');
+
+      XLSX.writeFile(wb, `Backup-Lengkap-JMO-${tanggalLokalISO(new Date())}.xlsx`);
+
+      btn.disabled = false;
+      btn.textContent = '💾 Download Semua Data Saya (Backup Lengkap)';
+    }
+    document.getElementById('btnDownloadSemuaData').addEventListener('click', downloadSemuaDataSaya);
 
     async function mulaiSemesterBaru() {
       const namaBaru = prompt('Nama semester baru (mis. "Genap"):');
