@@ -13,6 +13,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/expr-eval/2.0.2/bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     :root {
       --ink: #1E2B22;
@@ -1030,6 +1031,21 @@
     </div>
   </div>
   
+  </div>
+
+  <!-- Modal: QR Code Papan Poin -->
+  <div id="modalQrPapan" style="display:none; position:fixed; inset:0; background:rgba(20,30,24,0.55); z-index:200; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--paper); border-radius:14px; max-width:340px; width:100%; padding:26px 22px; text-align:center; font-family:'IBM Plex Sans',sans-serif;">
+      <div style="font-size:34px; margin-bottom:6px;">📱</div>
+      <h2 style="font-family:'Fraunces',serif; font-style:italic; color:var(--ink); margin:0 0 8px; font-size:20px;">QR Papan Poin</h2>
+      <p id="namaKelasQr" style="color:var(--muted); font-size:13.5px; margin:0 0 14px;"></p>
+      <canvas id="canvasQrPapan" style="margin:0 auto 14px; display:block;"></canvas>
+      <p style="color:var(--muted); font-size:11.5px; margin:0 0 14px;">Siswa/wali tinggal scan pakai kamera HP untuk buka Papan Poin kelas ini.</p>
+      <button type="button" onclick="salinLinkDariModalQr()" style="width:100%; background:var(--accent-dark); color:#fff; border:none; padding:12px; border-radius:7px; font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit; margin-bottom:8px;">📋 Salin Link</button>
+      <button type="button" onclick="document.getElementById('modalQrPapan').style.display='none'" style="background:none; border:none; color:var(--muted); font-size:12.5px; text-decoration:underline; cursor:pointer;">Tutup</button>
+    </div>
+  </div>
+
   <!-- Modal: Onboarding Guru Baru -->
 <div id="modal-onboarding" style="display:none; position:fixed; inset:0; background:rgba(20,30,24,0.55); z-index:200; align-items:center; justify-content:center;">
   <div style="background:var(--paper); border-radius:14px; max-width:380px; width:100%; padding:26px 22px; text-align:center; font-family:inherit;">
@@ -2107,6 +2123,28 @@
       }
     }
 
+    let linkQrAktif = '';
+    async function tampilkanQrPapanPoin(kelasId, token, namaKelas) {
+      if (!token) {
+        const { data, error } = await db.from('kelas').select('token_publik').eq('id', kelasId).single();
+        if (error || !data?.token_publik) { alert('Gagal mengambil link papan poin. Coba sesaat lagi.'); return; }
+        token = data.token_publik;
+      }
+      linkQrAktif = window.location.origin + '/papan-poin.html?k=' + token;
+      document.getElementById('namaKelasQr').textContent = namaKelas;
+      await QRCode.toCanvas(document.getElementById('canvasQrPapan'), linkQrAktif, { width: 220, margin: 1 });
+      document.getElementById('modalQrPapan').style.display = 'flex';
+    }
+
+    async function salinLinkDariModalQr() {
+      try {
+        await navigator.clipboard.writeText(linkQrAktif);
+        alert('Link disalin ke clipboard.');
+      } catch {
+        prompt('Salin link ini secara manual:', linkQrAktif);
+      }
+    }
+    
     async function muatKelasSetup() {
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
       const wadah = document.getElementById('listKelas');
@@ -2116,6 +2154,7 @@
         <span>
         <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
         <button type="button" class="entry-btn" onclick="duplikasiKelas('${k.id}', '${escapeHtml(k.nama_kelas)}', '${escapeHtml(k.mata_pelajaran)}')">📋 Duplikat</button>
+        <button type="button" class="entry-btn" onclick="tampilkanQrPapanPoin('${k.id}', '${k.token_publik || ''}', '${escapeHtml(k.nama_kelas)}')">📱 QR Code</button>
         <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
         </span></div>`
       ).join('');
