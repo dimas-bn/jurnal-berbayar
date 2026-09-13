@@ -810,11 +810,16 @@ x`<!DOCTYPE html>
     header.app-header {
       background: var(--ink);
       color: var(--paper);
-      padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+      padding: 16px 16px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
+    }
+    @media (display-mode: standalone) {
+      header.app-header {
+        padding-top: calc(16px + env(safe-area-inset-top));
+      }
     }
 
     @media (max-width: 600px) {
