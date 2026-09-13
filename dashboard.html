@@ -2810,11 +2810,15 @@ x`<!DOCTYPE html>
         }
         // >>> AKHIR TAMBAHAN <<<
 
+        // JADI (insert dulu, baru hapus yang lama):
         let jurnalId = editingId;
+        let idAbsensiLama = [];
         if (editingId) {
+          const { data: absensiLama } = await db.from('absensi').select('id').eq('jurnal_id', editingId);
+          idAbsensiLama = (absensiLama || []).map(a => a.id);
+
           const { error } = await db.from('jurnal').update({ tanggal, kelas_id: kelasId, hari, jam_ke: jamKe, mapel, materi }).eq('id', editingId);
           if (error) throw error;
-          await db.from('absensi').delete().eq('jurnal_id', editingId);
         } else {
           const { data: baru, error } = await db.from('jurnal').insert({ guru_id: guruId, kelas_id: kelasId, tanggal, hari, jam_ke: jamKe, mapel, materi }).select().single();
           if (error) throw error;
@@ -2824,9 +2828,13 @@ x`<!DOCTYPE html>
         const rowsAbsensi = siswaPayload.map(s => ({ jurnal_id: jurnalId, siswa_id: s.siswa_id, status: s.status, keterangan: s.keterangan, poin: s.poin }));
         if (rowsAbsensi.length) {
           const { error: errAbsen } = await db.from('absensi').insert(rowsAbsensi);
-          if (errAbsen) throw errAbsen;
+          if (errAbsen) throw errAbsen; // gagal di sini = absensi lama masih utuh, aman
         }
 
+        if (idAbsensiLama.length) {
+          const { error: errHapusLama } = await db.from('absensi').delete().in('id', idAbsensiLama);
+          if (errHapusLama) console.warn('Absensi lama gagal dihapus (data baru tetap aman):', errHapusLama.message);
+        }
         const sedangEdit = !!editingId;
         showToast('ok', (sedangEdit ? 'Perubahan tersimpan — ' : 'Tersimpan — ') + hari + ', jurnal & absensi ' + siswaPayload.length + ' siswa berhasil dicatat.');
         resetForm();
@@ -3475,7 +3483,12 @@ x`<!DOCTYPE html>
       const { data } = await db.from('profil_guru')
         .select('batas_jeblok, nilai_kkm, batas_istimewa').eq('id', guruId).single();
       if (data) {
-        kkmSetting = { batas_jeblok: data.batas_jeblok, nilai_kkm: data.nilai_kkm, batas_istimewa: data.batas_istimewa };
+// JADI:
+        kkmSetting = {
+          batas_jeblok: data.batas_jeblok ?? 60,
+          nilai_kkm: data.nilai_kkm ?? 70,
+          batas_istimewa: data.batas_istimewa ?? 85
+        };
       }
       document.getElementById('kkmJeblok').value = kkmSetting.batas_jeblok;
       document.getElementById('kkmKKM').value = kkmSetting.nilai_kkm;
@@ -3726,17 +3739,24 @@ x`<!DOCTYPE html>
         if (!lanjut) return;
       }
 
-      // Kalau sedang edit, hapus dulu batch lama (kelas+nama+tanggal lama) sebelum insert baru
+      // JADI (insert dulu, baru hapus batch lama):
+      let idNilaiLama = [];
       if (editingNilaiBatch) {
-        await db.from('nilai').delete()
+        const { data: nilaiLama } = await db.from('nilai').select('id')
           .eq('guru_id', guruId)
           .eq('kelas_id', editingNilaiBatch.kelas_id)
           .eq('nama_penilaian', editingNilaiBatch.nama_penilaian)
           .eq('tanggal', editingNilaiBatch.tanggal);
+        idNilaiLama = (nilaiLama || []).map(n => n.id);
       }
 
       const { error } = await db.from('nilai').insert(baris);
-      if (error) { alert('Gagal menyimpan: ' + error.message); return; }
+      if (error) { alert('Gagal menyimpan: ' + error.message); return; } // gagal di sini = batch lama masih utuh
+
+      if (idNilaiLama.length) {
+        const { error: errHapusLama } = await db.from('nilai').delete().in('id', idNilaiLama);
+        if (errHapusLama) console.warn('Batch nilai lama gagal dihapus (data baru tetap aman):', errHapusLama.message);
+      }
 
       batalEditNilai();
       document.getElementById('namaPenilaianInput').value = '';
@@ -3947,9 +3967,11 @@ x`<!DOCTYPE html>
         .from('siswa').select('id, nama_siswa, nomor_presensi')
         .eq('kelas_id', kelasId).order('nomor_presensi');
 
-      const { data: nilaiRows } = await db
+    // JADI:
+      const { data: nilaiRowsRaw } = await db
         .from('nilai').select('siswa_id, nama_penilaian, nilai')
         .eq('kelas_id', kelasId);
+      const nilaiRows = nilaiRowsRaw || [];
 
       const namaKolom = [...new Set(nilaiRows.map(r => r.nama_penilaian))];
       const pivot = {};
