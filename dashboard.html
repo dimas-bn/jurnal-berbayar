@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+x`<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="utf-8">
@@ -2161,8 +2161,8 @@
         `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
         <span>
         <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
-        <button type="button" class="entry-btn" onclick="duplikasiKelas('${k.id}', '${escapeHtml(k.nama_kelas)}', '${escapeHtml(k.mata_pelajaran)}')">📋 Duplikat</button>
-        <button type="button" class="entry-btn" onclick="tampilkanQrPapanPoin('${k.id}', '${k.token_publik || ''}', '${escapeHtml(k.nama_kelas)}')">📱 QR Code</button>
+        <button type="button" class="entry-btn" data-id="${escapeHtml(k.id)}" data-nama="${escapeHtml(k.nama_kelas)}" data-mapel="${escapeHtml(k.mata_pelajaran)}" onclick="duplikasiKelas(this.dataset.id, this.dataset.nama, this.dataset.mapel)">📋 Duplikat</button>
+        <button type="button" class="entry-btn" data-id="${escapeHtml(k.id)}" data-token="${escapeHtml(k.token_publik || '')}" data-nama="${escapeHtml(k.nama_kelas)}" onclick="tampilkanQrPapanPoin(this.dataset.id, this.dataset.token, this.dataset.nama)">📱 QR Code</button>
         <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
         </span></div>`
       ).join('');
@@ -4053,7 +4053,7 @@
       siswaList.forEach((s, i) => {
         const nilaiSiswa = pivot[s.id] || {};
         const rapor = hitungNilaiRapor(rumus, nilaiSiswa);
-        html += `<tr><td>${i + 1}</td><td onclick="tampilkanNamaLengkap('${escapeHtml(s.nama_siswa).replace(/'/g, "\\'")}')">${escapeHtml(s.nama_siswa)}</td>`;
+        html += `<tr><td>${i + 1}</td><td data-nama="${escapeHtml(s.nama_siswa)}" onclick="tampilkanNamaLengkap(this.dataset.nama)">${escapeHtml(s.nama_siswa)}</td>`;
         namaKolom.forEach(k => html += `<td>${nilaiSiswa[k] !== undefined ? Math.round(nilaiSiswa[k]) : '-'}</td>`);
         html += `<td><strong>${rapor !== null ? Math.round(rapor) : '-'}</strong></td></tr>`;
       });
