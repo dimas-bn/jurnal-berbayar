@@ -19,6 +19,11 @@ const TABEL_SUMBER_GRUP = ["arsip_jurnal", "arsip_nilai", "arsip_catatan_persiap
 
 Deno.serve(async (req) => {
   try {
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -66,8 +71,13 @@ Deno.serve(async (req) => {
         ? await supabase.from("arsip_absensi").select("jurnal_id, status, keterangan, poin, siswa_id").in("jurnal_id", idJurnal)
         : { data: [] };
 
-      const { data: siswaArsip } = await supabase.from("arsip_siswa").select("id, nama_siswa").eq("guru_id", guru_id).eq("kadaluarsa_pada", kadaluarsa);
       const { data: kelasArsip } = await supabase.from("arsip_kelas").select("id, nama_kelas").eq("guru_id", guru_id).eq("kadaluarsa_pada", kadaluarsa);
+      const idKelas = (kelasArsip ?? []).map((k) => k.id);
+
+      const { data: siswaArsip } = idKelas.length
+        ? await supabase.from("arsip_siswa").select("id, nama_siswa").in("kelas_id", idKelas).eq("kadaluarsa_pada", kadaluarsa)
+        : { data: [] };
+
       const petaSiswa = new Map((siswaArsip ?? []).map((s) => [s.id, s.nama_siswa]));
       const petaKelas = new Map((kelasArsip ?? []).map((k) => [k.id, k.nama_kelas]));
 

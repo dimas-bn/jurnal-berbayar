@@ -21,6 +21,11 @@ const HARI_ID = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
 
 Deno.serve(async (req) => {
   try {
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
