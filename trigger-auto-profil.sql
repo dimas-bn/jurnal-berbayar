@@ -14,7 +14,7 @@ begin
     new.email,
     'trial',
     true,
-    now() + interval '7 days' -- masa trial 7 hari sebelum diminta pilih paket
+    now() + interval '30 days' -- masa trial 30 hari sebelum diminta pilih paket
   );
   return new;
 end;
