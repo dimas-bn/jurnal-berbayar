@@ -1515,11 +1515,11 @@
           Atur sendiri ambang batas nilai sesuai standar KKM sekolah Anda. Nilai akan otomatis diberi warna berdasarkan 3 angka ini.
         </p>
         <label for="kkmJeblok" style="margin-top:0;">Batas Jeblok <span style="font-weight:500;color:var(--muted);">(di bawah ini = merah)</span></label>
-        <input type="number" id="kkmJeblok" min="0" max="100" placeholder="mis. 50">
+        <input type="number" id="kkmJeblok" min="0" max="100" placeholder="mis. 60">
         <label for="kkmKKM">Nilai KKM <span style="font-weight:500;color:var(--muted);">(di bawah ini = kuning, di atas = hijau)</span></label>
-        <input type="number" id="kkmKKM" min="0" max="100" placeholder="mis. 75">
+        <input type="number" id="kkmKKM" min="0" max="100" placeholder="mis. 70">
         <label for="kkmIstimewa">Batas Istimewa <span style="font-weight:500;color:var(--muted);">(di atas ini = biru)</span></label>
-        <input type="number" id="kkmIstimewa" min="0" max="100" placeholder="mis. 90">
+        <input type="number" id="kkmIstimewa" min="0" max="100" placeholder="mis. 85">
         <div style="display:flex; gap:6px; margin:14px 0;">
           <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--red); color:#fff;">Jeblok</span>
           <span style="flex:1; text-align:center; padding:6px 4px; border-radius:4px; font-size:11.5px; font-weight:600; background:var(--amber); color:#fff;">Belum KKM</span>
@@ -2815,7 +2815,6 @@
         }
         // >>> AKHIR TAMBAHAN <<<
 
-        // JADI (insert dulu, baru hapus yang lama):
         let jurnalId = editingId;
         let idAbsensiLama = [];
         if (editingId) {
@@ -3476,7 +3475,7 @@
 
 
     // ================== NILAI SISWA ==================
-    let kkmSetting = { batas_jeblok: 50, nilai_kkm: 75, batas_istimewa: 90 };
+    let kkmSetting = { batas_jeblok: 60, nilai_kkm: 70, batas_istimewa: 85 };
     let editingNilaiBatch = null; // { kelas_id, nama_penilaian, tanggal } saat mode edit
 
     function toggleKKM() {
@@ -3488,7 +3487,7 @@
       const { data } = await db.from('profil_guru')
         .select('batas_jeblok, nilai_kkm, batas_istimewa').eq('id', guruId).single();
       if (data) {
-// JADI:
+
         kkmSetting = {
           batas_jeblok: data.batas_jeblok ?? 60,
           nilai_kkm: data.nilai_kkm ?? 70,
@@ -3744,7 +3743,6 @@
         if (!lanjut) return;
       }
 
-      // JADI (insert dulu, baru hapus batch lama):
       let idNilaiLama = [];
       if (editingNilaiBatch) {
         const { data: nilaiLama } = await db.from('nilai').select('id')
@@ -3972,7 +3970,6 @@
         .from('siswa').select('id, nama_siswa, nomor_presensi')
         .eq('kelas_id', kelasId).order('nomor_presensi');
 
-    // JADI:
       const { data: nilaiRowsRaw } = await db
         .from('nilai').select('siswa_id, nama_penilaian, nilai')
         .eq('kelas_id', kelasId);
