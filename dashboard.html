@@ -4898,9 +4898,12 @@
     // ================== TOMBOL KEMBALI KE ATAS ==================
     const btnKeAtas = document.getElementById('btnKeAtas');
     function perbaruiTombolKeAtas() {
-      btnKeAtas.classList.toggle('tampil', window.scrollY > 300);
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const ambang = Math.min(300, maxScroll * 0.35);
+      btnKeAtas.classList.toggle('tampil', maxScroll > 60 && window.scrollY > ambang);
     }
     window.addEventListener('scroll', perbaruiTombolKeAtas);
+    window.addEventListener('resize', perbaruiTombolKeAtas);
     btnKeAtas.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
