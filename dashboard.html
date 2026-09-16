@@ -2060,6 +2060,7 @@
       });
       document.getElementById('actionBar').style.display = (tab === 'isi') ? 'block' : 'none';
       document.getElementById('btnKeAtas').classList.toggle('geser-atas', tab === 'isi');
+      setTimeout(perbaruiTombolKeAtas, 400);
       if (tab === 'riwayat') muatRiwayat();
       if (tab === 'catatan') muatCatatanSemua();
       if (tab === 'nilai') {
@@ -4896,9 +4897,10 @@
     // ================== MULAI ==================
     // ================== TOMBOL KEMBALI KE ATAS ==================
     const btnKeAtas = document.getElementById('btnKeAtas');
-    window.addEventListener('scroll', () => {
+    function perbaruiTombolKeAtas() {
       btnKeAtas.classList.toggle('tampil', window.scrollY > 300);
-    });
+    }
+    window.addEventListener('scroll', perbaruiTombolKeAtas);
     btnKeAtas.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
