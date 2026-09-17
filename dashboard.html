@@ -34,7 +34,7 @@
     }
 
     html, body { overflow-x: hidden; }
-    
+
     * { box-sizing: border-box; }
 
     body {
@@ -952,39 +952,12 @@
     #scroll-atas-daftar-nilai::-webkit-scrollbar { height: 8px; }
     #scroll-atas-daftar-nilai { scrollbar-width: thin; }
 
-    .font-size-control {
-      position: fixed;
-      right: 20px;
-      bottom: 90px;      /* dinaikkan dari 20px, kasih jarak ke tombol atas */
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;   /* <-- ini yang bikin vertikal */
-      gap: 4px;
-      background: var(--paper, #F6F2E4);
-      border: 1px solid var(--ink, #1E2B22);
-      border-radius: 8px;
-      padding: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    .font-size-control button {
-      width: 36px;
-      height: 36px;
-      border: 1px solid var(--muted, #6E6252);
-      border-radius: 6px;
-      background: #fff;
-      color: var(--ink, #1E2B22);
-      font-weight: 700;
-      cursor: pointer;
-      font-family: 'IBM Plex Sans', sans-serif;
-    }
-
-    /* khusus mobile: naikkan lebih tinggi lagi krn ada bar "Simpan Jurnal" */
-    @media (max-width: 600px) {
-      .font-size-control {
-        bottom: 145px;
-        right: 10px;
-      }
-    }
+    .font-size-wrapper { position: fixed; right: 20px; bottom: 90px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .font-size-toggle { width: 36px; height: 36px; border: 1px solid var(--ink, #1E2B22); border-radius: 8px; background: var(--paper, #F6F2E4); color: var(--ink, #1E2B22); font-weight: 700; font-size: 13px; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .font-size-control { display: flex; flex-direction: column; gap: 4px; background: var(--paper, #F6F2E4); border: 1px solid var(--ink, #1E2B22); border-radius: 8px; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .font-size-control.tersembunyi { display: none; }
+    .font-size-control button { width: 36px; height: 36px; border: 1px solid var(--muted, #6E6252); border-radius: 6px; background: #fff; color: var(--ink, #1E2B22); font-weight: 700; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; } @media (max-width: 600px) {
+    .font-size-wrapper { bottom: 145px; right: 10px; } }
 
   </style>
 </head>
@@ -4973,6 +4946,7 @@
     });
     window.addEventListener('online', cekVersiTerbaruJMO);
   </script>
+
   <script src="voice-input.js"></script>
 
   <script>
@@ -4999,13 +4973,19 @@
   }
 
   document.addEventListener('DOMContentLoaded', terapkanUkuranFont);
+  let fontControlTersembunyi = localStorage.getItem('jmo_font_hidden') === '1';
+  function terapkanStatusFontControl() { document.getElementById('fontSizeControl').classList.toggle('tersembunyi', fontControlTersembunyi); }
+  function toggleFontControl() { fontControlTersembunyi = !fontControlTersembunyi; localStorage.setItem('jmo_font_hidden', fontControlTersembunyi ? '1' : '0'); terapkanStatusFontControl(); } document.addEventListener('DOMContentLoaded', terapkanStatusFontControl);
   </script>
 
-  <div class="font-size-control">
-    <button onclick="ubahUkuranFont(1)" title="Perbesar Teks"><strong>+</strong></button>
-    <button onclick="resetUkuranFont()" title="Ukuran Normal">A</button>
-    <button onclick="ubahUkuranFont(-1)" title="Perkecil Teks"><strong>-</strong></button>
+  <div class="font-size-wrapper"> 
+    <button class="font-size-toggle" onclick="toggleFontControl()" title="Sembunyikan/Tampilkan Pengatur Huruf">Aa</button> 
+    <div class="font-size-control" id="fontSizeControl"> 
+      <button onclick="ubahUkuranFont(1)" title="Perbesar Teks"><strong>+</strong></button> 
+      <button onclick="resetUkuranFont()" title="Ukuran Normal">A</button> 
+      <button onclick="ubahUkuranFont(-1)" title="Perkecil Teks"><strong>-</strong></button> 
   </div>
+ </div>
 
 </body>
 </html>
