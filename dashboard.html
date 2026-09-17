@@ -805,7 +805,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     #btnKeAtas.tampil { display: flex; }
-    #btnKeAtas.geser-atas { bottom: 230px; }
+    #btnKeAtas.geser-atas { bottom: 122px; }
 
     header.app-header {
       background: var(--ink);
@@ -926,7 +926,14 @@
       }
     }
 
-    .notice-mobile-daftar-nilai { display: none; }
+      @media (min-width: 769px) {
+        /* Mode landscape/spreadsheet khusus Daftar Nilai — desktop & tablet, mobile tidak berubah */ 
+        .wadah-daftar-nilai { max-height: 70vh; overflow-y: auto; }
+        .tabel-daftar-nilai thead th { position: sticky; top: 0; z-index: 4; } 
+        .tabel-daftar-nilai thead th:nth-child(1), 
+        .tabel-daftar-nilai thead th:nth-child(2) { z-index: 5; } }
+    
+      .notice-mobile-daftar-nilai { display: none; }
       @media (max-width: 768px) {
       .notice-mobile-daftar-nilai {
         display: block;
@@ -4898,12 +4905,9 @@
     // ================== TOMBOL KEMBALI KE ATAS ==================
     const btnKeAtas = document.getElementById('btnKeAtas');
     function perbaruiTombolKeAtas() {
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const ambang = Math.min(300, maxScroll * 0.35);
-      btnKeAtas.classList.toggle('tampil', maxScroll > 60 && window.scrollY > ambang);
+      btnKeAtas.classList.toggle('tampil', window.scrollY > 300);
     }
     window.addEventListener('scroll', perbaruiTombolKeAtas);
-    window.addEventListener('resize', perbaruiTombolKeAtas);
     btnKeAtas.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
