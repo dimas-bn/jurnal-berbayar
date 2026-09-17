@@ -930,10 +930,7 @@
         /* Mode landscape/spreadsheet khusus Daftar Nilai — desktop & tablet, mobile tidak berubah */ 
         .wadah-daftar-nilai { max-height: 70vh; overflow-y: auto; }
         .tabel-daftar-nilai thead th { position: sticky; top: 0; z-index: 4; } 
-        .tabel-daftar-nilai thead th:nth-child(1), 
-        .tabel-daftar-nilai thead th:nth-child(2) { z-index: 5; }
-        /* Bongkar dari tata letak terpusat 640px, khusus panel Daftar Nilai */ 
-        #panel-daftar-nilai { width: 94vw; max-width: 1600px; margin-left: 50vw; transform: translateX(-50%); }
+        #panel-daftar-nilai { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding-left: max(3vw, 44px); padding-right: 3vw; }
       }
     
       .notice-mobile-daftar-nilai { display: none; }
