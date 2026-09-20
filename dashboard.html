@@ -788,7 +788,7 @@
     #btnKeAtas {
       position: fixed;
       right: 22px;
-      bottom: 267px;
+      bottom: 260px;
       width: 46px;
       height: 46px;
       border-radius: 50%;
@@ -827,8 +827,8 @@
     @media (max-width: 600px) {
       #btnKeAtas,
       #btnKeAtas.geser-atas {
-        bottom: 325px;
-        right: 16px;
+        bottom: 295px;
+        right: 12px;
       }
     }
 
@@ -959,12 +959,12 @@
       z-index: 9999; 
       display: flex; 
       flex-direction: column; 
-      align-items: center; 
+      align-items: flex-end; 
       gap: 6px; }
 
     .font-size-toggle { 
       width: 36px; 
-      height: 36px;
+      height: 36px; 
       border: 1px solid var(--ink, #1E2B22); 
       border-radius: 8px; 
       background: var(--paper, #F6F2E4); 
@@ -2012,6 +2012,18 @@
         return;
       }
 
+      function sinkronScrollHorizontal(a, b) {
+      let redaman = false;
+      const tulis = (dari, ke) => {
+        if (redaman) return;
+        redaman = true;
+        ke.scrollLeft = dari.scrollLeft;
+        requestAnimationFrame(() => { redaman = false; });
+      };
+      a.addEventListener('scroll', () => tulis(a, b), { passive: true });
+      b.addEventListener('scroll', () => tulis(b, a), { passive: true });
+    }
+
       namaLengkapSaatIni = namaBaru;
       document.getElementById('infoGuru').textContent = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
       tampilkanPesanNama('✔️ Nama berhasil disimpan.', false);
@@ -2189,47 +2201,19 @@
       }
     }
     
-    let editingKelasId = null;
-
     async function muatKelasSetup() {
       const { data } = await db.from('kelas').select('id, nama_kelas, mata_pelajaran, token_publik').eq('guru_id', guruId).order('nama_kelas');
       const wadah = document.getElementById('listKelas');
         document.getElementById('kelasKosong').style.display = (!data || !data.length) ? 'block' : 'none';
-        wadah.innerHTML = (data || []).map(k => {
-        if (editingKelasId === k.id) {
-          return `<div class="setup-list-item" style="flex-wrap:wrap; gap:8px;">
-            <input type="text" id="editNamaKelas-${k.id}" value="${escapeHtml(k.nama_kelas)}" placeholder="Nama kelas" style="flex:1; min-width:120px;">
-            <input type="text" id="editMapelKelas-${k.id}" value="${escapeHtml(k.mata_pelajaran)}" placeholder="Mata pelajaran" style="flex:1; min-width:120px;">
-            <div style="display:flex; gap:6px; width:100%;">
-              <button type="button" class="btn-tambah" onclick="editKelasSimpan('${k.id}')" style="flex:1;">Simpan</button>
-              <button type="button" class="entry-btn" onclick="editKelasBatal()" style="flex:1;">Batal</button>
-            </div>
-          </div>`;
-        }
-        return `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
+        wadah.innerHTML = (data || []).map(k =>
+        `<div class="setup-list-item"><span>${escapeHtml(k.nama_kelas)} <span class="ket">— ${escapeHtml(k.mata_pelajaran)}</span></span>
         <span>
         <button type="button" class="entry-btn" onclick="salinLinkPapanPoin('${k.id}', '${k.token_publik || ''}')">🚀 Papan Poin</button>
         <button type="button" class="entry-btn" data-id="${escapeHtml(k.id)}" data-nama="${escapeHtml(k.nama_kelas)}" data-mapel="${escapeHtml(k.mata_pelajaran)}" onclick="duplikasiKelas(this.dataset.id, this.dataset.nama, this.dataset.mapel)">📋 Duplikat</button>
         <button type="button" class="entry-btn" data-id="${escapeHtml(k.id)}" data-token="${escapeHtml(k.token_publik || '')}" data-nama="${escapeHtml(k.nama_kelas)}" onclick="tampilkanQrPapanPoin(this.dataset.id, this.dataset.token, this.dataset.nama)">📱 QR Code</button>
-        <button type="button" class="entry-btn" onclick="editKelasMulai('${k.id}')">Edit</button>
         <button type="button" class="entry-btn danger" onclick="hapusKelas('${k.id}')">Hapus</button>
-        </span></div>`;
-      }).join('');
-    }
-
-    function editKelasMulai(id) { editingKelasId = id; muatKelasSetup(); }
-    function editKelasBatal() { editingKelasId = null; muatKelasSetup(); }
-
-    async function editKelasSimpan(id) {
-      const namaEl = document.getElementById('editNamaKelas-' + id);
-      const mapelEl = document.getElementById('editMapelKelas-' + id);
-      const nama = namaEl.value.trim();
-      const mapel = mapelEl.value.trim();
-      if (!nama || !mapel) { alert('Nama kelas dan mata pelajaran tidak boleh kosong.'); return; }
-      const { error } = await db.from('kelas').update({ nama_kelas: nama, mata_pelajaran: mapel }).eq('id', id);
-      if (error) { alert('Gagal menyimpan: ' + error.message); return; }
-      editingKelasId = null;
-      muatKelasSetup(); muatDaftarKelasGlobal();
+        </span></div>`
+      ).join('');
     }
 
     async function hapusKelas(id) {
@@ -4080,8 +4064,7 @@
 
       atas.style.display = 'block';
       innerAtas.style.width = tabel.scrollWidth + 'px';
-      atas.onscroll = () => { bawah.scrollLeft = atas.scrollLeft; };
-      bawah.onscroll = () => { atas.scrollLeft = bawah.scrollLeft; };
+      sinkronScrollHorizontal(atas, bawah);
     }
 
     function isiDropdownKolom(namaKolom) {
@@ -4256,8 +4239,7 @@
       const scrollTop = document.getElementById('rekapScrollTop');
       const tableWrap = document.getElementById('rekapTableWrap');
       scrollTop.firstElementChild.style.width = tableWrap.scrollWidth + 'px';
-      scrollTop.addEventListener('scroll', () => { tableWrap.scrollLeft = scrollTop.scrollLeft; });
-      tableWrap.addEventListener('scroll', () => { scrollTop.scrollLeft = tableWrap.scrollLeft; });
+      sinkronScrollHorizontal(scrollTop, tableWrap);
 
       document.getElementById('btnExportRekapExcel').addEventListener('click', () => {
         const baris = [['No', 'Nama', 'H', 'I', 'S', 'D', 'A', '% Hadir', 'Rata² Poin', 'Rata² Nilai'],
@@ -4948,8 +4930,7 @@
       const scrollTop = document.getElementById('adminScrollTop');
       const tableWrap = document.getElementById('adminTableWrap');
       scrollTop.firstElementChild.style.width = tableWrap.scrollWidth + 'px';
-      scrollTop.addEventListener('scroll', () => { tableWrap.scrollLeft = scrollTop.scrollLeft; });
-      tableWrap.addEventListener('scroll', () => { scrollTop.scrollLeft = tableWrap.scrollLeft; });
+      sinkronScrollHorizontal(scrollTop, tableWrap);
     }
 
     // ================== MULAI ==================
