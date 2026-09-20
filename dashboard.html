@@ -596,6 +596,12 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
+    #adminTableWrap 
+    .rekap-table th:nth-child(1), #adminTableWrap .rekap-table td:nth-child(1) {
+      position: sticky; left: 0; width: 160px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #fff; z-index: 2; 
+    }
+    #adminTableWrap .rekap-table th:nth-child(1) { background: var(--paper, #F6F2E4); } #adminTableWrap .rekap-table th:nth-child(2), #adminTableWrap .rekap-table td:nth-child(2) { position: sticky; left: 160px; background: #fff; z-index: 1; box-shadow: 2px 0 3px rgba(0,0,0,0.08); } #adminTableWrap .rekap-table th:nth-child(2) { background: var(--paper, #F6F2E4); }
+    
     .rekap-table tbody tr:nth-child(even) { background: #EFEADA; }
     .print-btn {
       margin-top: 18px;
