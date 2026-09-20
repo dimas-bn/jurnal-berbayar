@@ -4918,7 +4918,6 @@
 
       resultEl.innerHTML = `<div class="result-card">
         <p class="rekap-summary">Total ${data.length} guru terdaftar · Diurutkan dari yang paling jarang aktif</p>
-        <div class="rekap-scroll-top" id="adminScrollTop"><div></div></div>
         <div class="rekap-table-wrap" id="adminTableWrap">
           <table class="rekap-table">
             <thead><tr><th>Nama</th><th>Email</th><th>Paket</th><th>Jml Jurnal</th><th>Terakhir Isi</th><th>Status</th></tr></thead>
@@ -4926,11 +4925,6 @@
           </table>
         </div>
       </div>`;
-
-      const scrollTop = document.getElementById('adminScrollTop');
-      const tableWrap = document.getElementById('adminTableWrap');
-      scrollTop.firstElementChild.style.width = tableWrap.scrollWidth + 'px';
-      sinkronScrollHorizontal(scrollTop, tableWrap);
     }
 
     // ================== MULAI ==================
