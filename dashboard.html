@@ -2036,16 +2036,6 @@
       document.getElementById('trialExpiredOverlay').style.display = 'flex';
     }
 
-      if (error) {
-        tampilkanPesanNama('Gagal menyimpan: ' + escapeHtml(error.message), true);
-        return;
-      }
-
-      namaLengkapSaatIni = namaBaru;
-      document.getElementById('infoGuru').textContent = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
-      tampilkanPesanNama('✔️ Nama berhasil disimpan.', false);
-      setTimeout(tutupModalGantiNama, 900);
-
     function sinkronScrollHorizontal(a, b) {
       let redaman = false;
       const tulis = (dari, ke) => {
