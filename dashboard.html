@@ -2016,18 +2016,6 @@
         return;
       }
 
-      function sinkronScrollHorizontal(a, b) {
-      let redaman = false;
-      const tulis = (dari, ke) => {
-        if (redaman) return;
-        redaman = true;
-        ke.scrollLeft = dari.scrollLeft;
-        requestAnimationFrame(() => { redaman = false; });
-      };
-      a.addEventListener('scroll', () => tulis(a, b), { passive: true });
-      b.addEventListener('scroll', () => tulis(b, a), { passive: true });
-    }
-
       namaLengkapSaatIni = namaBaru;
       document.getElementById('infoGuru').textContent = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
       tampilkanPesanNama('✔️ Nama berhasil disimpan.', false);
@@ -2046,6 +2034,28 @@
           ? 'Masa uji coba 30 hari Anda sudah berakhir. Pilih salah satu paket di bawah untuk melanjutkan pemakaian.'
           : `Paket ${labelPaket} Anda sudah berakhir. Perpanjang untuk melanjutkan pemakaian.`;
       document.getElementById('trialExpiredOverlay').style.display = 'flex';
+    }
+
+      if (error) {
+        tampilkanPesanNama('Gagal menyimpan: ' + escapeHtml(error.message), true);
+        return;
+      }
+
+      namaLengkapSaatIni = namaBaru;
+      document.getElementById('infoGuru').textContent = `${namaLengkapSaatIni} · Paket ${labelPaketSaatIni}`;
+      tampilkanPesanNama('✔️ Nama berhasil disimpan.', false);
+      setTimeout(tutupModalGantiNama, 900);
+
+    function sinkronScrollHorizontal(a, b) {
+      let redaman = false;
+      const tulis = (dari, ke) => {
+        if (redaman) return;
+        redaman = true;
+        ke.scrollLeft = dari.scrollLeft;
+        requestAnimationFrame(() => { redaman = false; });
+      };
+      a.addEventListener('scroll', () => tulis(a, b), { passive: true });
+      b.addEventListener('scroll', () => tulis(b, a), { passive: true });
     }
 
     async function keluar() { await db.auth.signOut(); window.location.href = "index.html"; }
