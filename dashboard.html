@@ -3492,7 +3492,7 @@
       btn.textContent = '⏳ Menyiapkan file…';
 
       const { data } = await db.from('jurnal')
-        .select('id, tanggal, hari, jam_ke, mapel, materi, dibuat_pada, absensi (status, siswa:siswa_id (nama_siswa))')
+        .select('tanggal, hari, jam_ke, mapel, materi, absensi (status, siswa:siswa_id (nama_siswa))')
         .eq('guru_id', guruId).eq('kelas_id', kelasId).is('dihapus_pada', null).order('tanggal');
 
       if (!data || !data.length) {
@@ -3504,8 +3504,8 @@
 
       const singkatanStatus = { 'Izin': 'I', 'Sakit': 'S', 'Dispensasi': 'D', 'Alpa': 'A' };
 
-      const baris = [['ID Jurnal','Tanggal','Hari','Kelas','Jam Ke','Mata Pelajaran','Materi / Catatan','Jumlah Siswa','Jumlah Hadir','Keterangan Tidak Hadir','Waktu Disimpan']];
-      data.forEach(j => {
+      const baris = [['No.','Tanggal','Hari','Kelas','Jam Ke','Mata Pelajaran','Materi / Catatan','Jumlah Siswa','Jumlah Hadir','Keterangan Tidak Hadir']];
+      data.forEach((j, idx) => {
         const absensi = j.absensi || [];
         const jumlahSiswa = absensi.length;
         const jumlahHadir = absensi.filter(a => a.status === 'Hadir').length;
@@ -3513,13 +3513,13 @@
           .filter(a => a.status !== 'Hadir')
           .map(a => `${a.siswa?.nama_siswa || ''} (${singkatanStatus[a.status] || a.status})`)
           .join(', ');
-        const idJurnal = j.dibuat_pada ? `J-${new Date(j.dibuat_pada).getTime()}` : j.id;
-        baris.push([idJurnal, j.tanggal, j.hari, namaKelas, j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswa, jumlahHadir, tidakHadir, j.dibuat_pada || '']);
+        baris.push([idx + 1, j.tanggal, j.hari, namaKelas, j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswa, jumlahHadir, tidakHadir]);
       });
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
-      ws['!cols'] = [{wch:16},{wch:12},{wch:10},{wch:10},{wch:8},{wch:20},{wch:36},{wch:12},{wch:12},{wch:36},{wch:20}];
+
+      ws['!cols'] = [{wch:6},{wch:12},{wch:10},{wch:10},{wch:8},{wch:20},{wch:36},{wch:12},{wch:12},{wch:36}];
       XLSX.utils.book_append_sheet(wb, ws, namaKelas.slice(0, 31));
       XLSX.writeFile(wb, `Jurnal-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
 
