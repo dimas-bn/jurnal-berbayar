@@ -3418,13 +3418,15 @@
       muatSampah();
     });
 
-    // ==== EXPORT Excel ====
+    // ==== EXPORT SEMUA DATA Excel ====
     async function exportSemuaData() {
       const link = document.getElementById('linkExportExcel');
       link.classList.add('disabled');
       link.textContent = '⏳ Menyiapkan file…';
 
-      let baris = [['Tanggal','Hari','Jam Ke','Kelas','Mapel','Materi','Nama Siswa','Status','Keterangan','Poin']];
+      const singkatanStatus = { 'Izin': 'I', 'Sakit': 'S', 'Dispensasi': 'D', 'Alpa': 'A' };
+      const baris = [['No','Tanggal','Hari','Kelas','Jam Ke','Mata Pelajaran','Materi / Catatan','Jumlah Siswa','Jumlah Hadir','Keterangan Tidak Hadir']];
+      let noBaris = 1;
 
       if (modeArsipRiwayat) {
         const semId = document.getElementById('filterSemesterRiwayat').value;
@@ -3435,45 +3437,55 @@
         let absensiArsip = [];
         if (idJurnal.length) {
           const { data } = await db.from('arsip_absensi')
-            .select('jurnal_id, status, keterangan, poin, siswa_id').in('jurnal_id', idJurnal);
+            .select('jurnal_id, status, siswa_id').in('jurnal_id', idJurnal);
           absensiArsip = data || [];
         }
-        const { data: siswaAktif } = await db.from('siswa').select('id, nama_siswa');
-        const { data: siswaArsip } = await db.from('arsip_siswa').select('id, nama_siswa').eq('guru_id', guruId);
-        const petaSiswa = new Map([...(siswaAktif || []), ...(siswaArsip || [])].map(s => [s.id, s.nama_siswa]));
+        const { data: siswaAktif } = await db.from('siswa').select('id, kelas_id, nama_siswa');
+        const { data: siswaArsip } = await db.from('arsip_siswa').select('id, kelas_id, nama_siswa').eq('guru_id', guruId);
+        const semuaSiswa = [...(siswaAktif || []), ...(siswaArsip || [])];
+        const petaSiswa = new Map(semuaSiswa.map(s => [s.id, s.nama_siswa]));
+        const petaJumlahSiswaKelas = new Map();
+        semuaSiswa.forEach(s => petaJumlahSiswaKelas.set(s.kelas_id, (petaJumlahSiswaKelas.get(s.kelas_id) || 0) + 1));
         const { data: kelasAktif } = await db.from('kelas').select('id, nama_kelas');
         const { data: kelasArsip } = await db.from('arsip_kelas').select('id, nama_kelas').eq('guru_id', guruId);
         const petaKelas = new Map([...(kelasAktif || []), ...(kelasArsip || [])].map(k => [k.id, k.nama_kelas]));
 
         (jurnalArsip || []).forEach(j => {
           const absensiJ = absensiArsip.filter(a => a.jurnal_id === j.id);
-          if (!absensiJ.length) {
-            baris.push([j.tanggal, j.hari, j.jam_ke, petaKelas.get(j.kelas_id) || '', j.mapel || '', j.materi || '', '', '', '', '']);
-          }
-          absensiJ.forEach(a => {
-            baris.push([j.tanggal, j.hari, j.jam_ke, petaKelas.get(j.kelas_id) || '', j.mapel || '', j.materi || '', petaSiswa.get(a.siswa_id) || '', a.status, a.keterangan || '', a.poin]);
-          });
+          const jumlahSiswaKelas = petaJumlahSiswaKelas.get(j.kelas_id) || 0;
+          const tidakHadirRows = absensiJ.filter(a => a.status !== 'Hadir');
+          const jumlahHadir = jumlahSiswaKelas - tidakHadirRows.length;
+          const tidakHadir = tidakHadirRows.map(a => `${petaSiswa.get(a.siswa_id) || ''} (${singkatanStatus[a.status] || a.status})`).join(', ');
+          baris.push([noBaris++, j.tanggal, j.hari, petaKelas.get(j.kelas_id) || '', j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswaKelas, jumlahHadir, tidakHadir]);
         });
       } else {
+        const { data: siswaAktif } = await db.from('siswa').select('kelas_id');
+        const petaJumlahSiswaKelas = new Map();
+        (siswaAktif || []).forEach(s => petaJumlahSiswaKelas.set(s.kelas_id, (petaJumlahSiswaKelas.get(s.kelas_id) || 0) + 1));
+
         const { data } = await db.from('jurnal')
-          .select('tanggal, hari, jam_ke, mapel, materi, kelas:kelas_id (nama_kelas), absensi (status, keterangan, poin, siswa:siswa_id (nama_siswa))')
+          .select('tanggal, hari, jam_ke, mapel, materi, kelas_id, kelas:kelas_id (nama_kelas), absensi (status, siswa:siswa_id (nama_siswa))')
           .eq('guru_id', guruId).is('dihapus_pada', null).order('tanggal');
         (data || []).forEach(j => {
-          (j.absensi || []).forEach(a => {
-            baris.push([j.tanggal, j.hari, j.jam_ke, j.kelas?.nama_kelas || '', j.mapel || '', j.materi || '', a.siswa?.nama_siswa || '', a.status, a.keterangan || '', a.poin]);
-          });
+          const absensi = j.absensi || [];
+          const jumlahSiswaKelas = petaJumlahSiswaKelas.get(j.kelas_id) || 0;
+          const tidakHadirRows = absensi.filter(a => a.status !== 'Hadir');
+          const jumlahHadir = jumlahSiswaKelas - tidakHadirRows.length;
+          const tidakHadir = tidakHadirRows.map(a => `${a.siswa?.nama_siswa || ''} (${singkatanStatus[a.status] || a.status})`).join(', ');
+          baris.push([noBaris++, j.tanggal, j.hari, j.kelas?.nama_kelas || '', j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswaKelas, jumlahHadir, tidakHadir]);
         });
       }
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
-      ws['!cols'] = [{wch:12},{wch:10},{wch:8},{wch:14},{wch:16},{wch:24},{wch:24},{wch:12},{wch:20},{wch:8}];
+      ws['!cols'] = [{wch:5},{wch:12},{wch:10},{wch:10},{wch:8},{wch:20},{wch:36},{wch:12},{wch:12},{wch:36}];
       XLSX.utils.book_append_sheet(wb, ws, 'Jurnal Mengajar');
       XLSX.writeFile(wb, (modeArsipRiwayat ? 'arsip-' : 'backup-') + 'jurnal-mengajar.xlsx');
 
       link.classList.remove('disabled');
       link.textContent = '📥 Export Semua Data (Excel)';
     }
+
     document.getElementById('linkExportExcel').addEventListener('click', function(e) {
       e.preventDefault();
       exportSemuaData();
@@ -3508,7 +3520,8 @@
 
       const singkatanStatus = { 'Izin': 'I', 'Sakit': 'S', 'Dispensasi': 'D', 'Alpa': 'A' };
 
-      const baris = [['Tanggal','Hari','Kelas','Jam Ke','Mata Pelajaran','Materi / Catatan','Jumlah Siswa','Jumlah Hadir','Keterangan Tidak Hadir']];
+      const baris = [['No','Tanggal','Hari','Kelas','Jam Ke','Mata Pelajaran','Materi / Catatan','Jumlah Siswa','Jumlah Hadir','Keterangan Tidak Hadir']];
+      let noBaris = 1;
       data.forEach(j => {
         const absensi = j.absensi || [];
         const tidakHadirRows = absensi.filter(a => a.status !== 'Hadir');
@@ -3516,12 +3529,12 @@
         const tidakHadir = tidakHadirRows
           .map(a => `${a.siswa?.nama_siswa || ''} (${singkatanStatus[a.status] || a.status})`)
           .join(', ');
-        baris.push([j.tanggal, j.hari, namaKelas, j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswaKelas, jumlahHadir, tidakHadir]);
+        baris.push([noBaris++, j.tanggal, j.hari, namaKelas, j.jam_ke, j.mapel || '', j.materi || '', jumlahSiswaKelas, jumlahHadir, tidakHadir]);
       });
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(baris);
-      ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:8},{wch:20},{wch:36},{wch:12},{wch:12},{wch:36}];
+      ws['!cols'] = [{wch:5},{wch:12},{wch:10},{wch:10},{wch:8},{wch:20},{wch:36},{wch:12},{wch:12},{wch:36}];
       XLSX.utils.book_append_sheet(wb, ws, namaKelas.slice(0, 31));
 
       XLSX.writeFile(wb, `Jurnal-${namaKelas.replace(/[^a-z0-9]+/gi, '-')}-${tanggalLokalISO(new Date())}.xlsx`);
